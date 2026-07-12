@@ -63,6 +63,16 @@ export default function OrgSetup() {
     setShowEmpForm(false);
   };
 
+  const handlePromote = (id) => {
+    setEmpsList(prev => prev.map(emp => {
+      if (emp.id !== id) return emp;
+      const rolesOrder = [ROLES.EMPLOYEE, ROLES.DEPT_HEAD, ROLES.ASSET_MANAGER, ROLES.ADMIN];
+      const currentIndex = rolesOrder.indexOf(emp.role);
+      const nextRole = rolesOrder[(currentIndex + 1) % rolesOrder.length];
+      return { ...emp, role: nextRole };
+    }));
+  };
+
   // Department columns
   const deptCols = [
     { key: 'name',          label: 'Department' },
@@ -117,6 +127,7 @@ export default function OrgSetup() {
           <button
             title="Promote / Change Role"
             className="btn-ghost py-1 px-2 text-xs text-primary-600"
+            onClick={() => handlePromote(row.id)}
           >
             <UserCog size={13} /> Promote
           </button>

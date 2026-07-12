@@ -36,6 +36,15 @@ export default function AssetAudit() {
     setAuditName(''); setStartDate(''); setEndDate('');
   };
 
+  const handleCloseAudit = (id) => {
+    if (window.confirm("Are you sure you want to close this audit? Discrepancy reports will be finalized.")) {
+      setCycles(cs => cs.map(c => c.id === id ? { ...c, status: 'Closed' } : c));
+      if (selected?.id === id) {
+        setSelected(prev => ({ ...prev, status: 'Closed' }));
+      }
+    }
+  };
+
   const updateChecklistItem = (cycleId, assetId, newStatus) => {
     setCycles(cs => cs.map(c =>
       c.id === cycleId
@@ -152,6 +161,14 @@ export default function AssetAudit() {
                     <h3 className="text-sm font-semibold">{selected.name} — Checklist</h3>
                     <p className="text-xs text-gray-400">Mark each asset as Verified, Missing, or Damaged</p>
                   </div>
+                  {selected.status === 'Open' && (
+                    <button 
+                      className="btn-primary py-1 px-3 text-xs" 
+                      onClick={() => handleCloseAudit(selected.id)}
+                    >
+                      Close Audit
+                    </button>
+                  )}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-100">

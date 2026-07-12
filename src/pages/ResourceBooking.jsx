@@ -12,6 +12,7 @@ export default function ResourceBooking() {
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date('2024-01-15'), { weekStartsOn: 1 }));
   const [showForm,   setShowForm]  = useState(false);
   const [conflict,   setConflict]  = useState(false);
+  const [conflictMsg, setConflictMsg] = useState('');
   
   // Form State
   const [selectedRes, setSelectedRes] = useState('');
@@ -38,9 +39,12 @@ export default function ResourceBooking() {
     
     // Check overlap
     const existing = bookingsList.filter(b => b.resource === selectedRes && b.date === bookDate && b.status === 'Confirmed');
-    const isConflict = existing.some(b => (startTime >= b.startTime && startTime < b.endTime) || (endTime > b.startTime && endTime <= b.endTime));
     
-    if (isConflict) {
+    // Proper time overlap formula: StartA < EndB && EndA > StartB
+    const overlappingBooking = existing.find(b => (startTime < b.endTime) && (endTime > b.startTime));
+    
+    if (overlappingBooking) {
+      setConflictMsg(`${selectedRes} is already booked from ${overlappingBooking.startTime}–${overlappingBooking.endTime} on ${bookDate} (${overlappingBooking.purpose} — ${overlappingBooking.bookedBy}).`);
       setConflict(true);
       setShowForm(false);
       return;
@@ -224,7 +228,7 @@ export default function ResourceBooking() {
         onClose={() => setConflict(false)}
         title="Booking Overlap Detected"
         message="The selected time slot is already booked for this resource."
-        conflictDetail="Conference Room A is already booked from 09:00–11:00 on Jan 15 (Sprint Planning — Alice Johnson)."
+        conflictDetail={conflictMsg}
         alternativeLabel="See Available Slots"
         onAlternative={() => setConflict(false)}
       />

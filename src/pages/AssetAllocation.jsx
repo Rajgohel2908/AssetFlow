@@ -38,6 +38,11 @@ export default function AssetAllocation() {
   const [dueDate, setDueDate] = useState('');
   const [stepperStatus, setStepperStatus] = useState('Approved');
   const [allocs, setAllocs] = useState(initialAllocations);
+  const [trfs, setTrfs] = useState(transferRequests);
+
+  const handleUpdateTransfer = (id, newStatus) => {
+    setTrfs(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+  };
 
   const availableAssets = assets.filter(a => a.status === 'Available');
 
@@ -143,7 +148,7 @@ export default function AssetAllocation() {
                 <label className="form-label">Asset *</label>
                 <select className="form-select">
                   <option value="">Select asset…</option>
-                  {allocations.map(a => <option key={a.id}>{a.assetName} ({a.assetId})</option>)}
+                  {allocs.map(a => <option key={a.id}>{a.assetName} ({a.assetId})</option>)}
                 </select>
               </div>
               <div>
@@ -168,16 +173,16 @@ export default function AssetAllocation() {
         <div className="card-header">
           <span className="text-sm font-semibold">Transfer Approval Progress — TRF-002</span>
           <div className="flex gap-2">
-            {['Pending','Approved','In Progress','Resolved'].map(s => (
-              <button key={s} onClick={() => setStepperStatus(s)}
-                className={`text-xs px-2 py-1 rounded border ${stepperStatus===s ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600'}`}>
+            {['All', 'Pending','Approved','In Progress','Resolved'].map(s => (
+              <button key={s} onClick={() => { setStepperStatus(s); setTab(1); }}
+                className={`text-xs px-2 py-1 rounded border ${stepperStatus===s ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
                 {s}
               </button>
             ))}
           </div>
         </div>
         <div className="card-body">
-          <ApprovalWorkflowStepper currentStatus={stepperStatus} />
+          <ApprovalWorkflowStepper currentStatus={stepperStatus === 'All' ? 'Pending' : stepperStatus} />
         </div>
       </div>
 
@@ -215,7 +220,7 @@ export default function AssetAllocation() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {transferRequests.map(r => (
+                {trfs.filter(r => stepperStatus === 'All' || r.status === stepperStatus).map(r => (
                   <tr key={r.id} className="table-tr">
                     <td className="table-td">{r.id}</td>
                     <td className="table-td font-medium">{r.assetName}</td>
@@ -227,13 +232,30 @@ export default function AssetAllocation() {
                     <td className="table-td">
                       {r.status === 'Pending' && (
                         <div className="flex gap-1">
-                          <button className="btn-ghost py-1 px-2 text-xs text-emerald-600"><CheckCircle size={13}/> Approve</button>
-                          <button className="btn-ghost py-1 px-2 text-xs text-red-500"><XCircle size={13}/> Reject</button>
+                          <button 
+                            className="btn-ghost py-1 px-2 text-xs text-emerald-600"
+                            onClick={() => handleUpdateTransfer(r.id, 'Approved')}
+                          >
+                            <CheckCircle size={13}/> Approve
+                          </button>
+                          <button 
+                            className="btn-ghost py-1 px-2 text-xs text-red-500"
+                            onClick={() => handleUpdateTransfer(r.id, 'Rejected')}
+                          >
+                            <XCircle size={13}/> Reject
+                          </button>
                         </div>
                       )}
                     </td>
                   </tr>
                 ))}
+                {trfs.filter(r => stepperStatus === 'All' || r.status === stepperStatus).length === 0 && (
+                  <tr>
+                    <td colSpan="8" className="text-center py-8 text-sm text-gray-500">
+                      No transfer requests found for status: {stepperStatus}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
