@@ -4,75 +4,105 @@ import { ApiError } from '../utils/apiError.js';
 import { activityLogService } from '../services/activityLog.service.js';
 import { notifyService } from '../services/notification.service.js';
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
-
 const createSchema = z.object({
-  allocationId: z.string().cuid(),
-  toUserId: z.string().cuid(),
+  allocationId: z.string().cuid().optional(),
+  assetId: z.string().cuid().optional(),
+  toUserId: z.string().cuid().optional(),
+  toHolderUserId: z.string().cuid().optional(),
+  toHolderDepartmentId: z.string().cuid().optional(),
   reason: z.string().optional(),
+}).refine((data) => data.allocationId || data.assetId, {
+  message: 'allocationId or assetId is required',
+}).refine((data) => Boolean(data.toUserId || data.toHolderUserId) !== Boolean(data.toHolderDepartmentId), {
+  message: 'Transfer target must be exactly one employee or department',
 });
 
 const querySchema = z.object({
-  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+  status: z.enum(['REQUESTED', 'APPROVED', 'REJECTED', 'REALLOCATED', 'PENDING']).optional(),
   assetId: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
-// ─── Controllers ──────────────────────────────────────────────────────────────
+const transferInclude = {
+  asset: { select: { id: true, assetTag: true, name: true } },
+  fromHolderUser: { select: { id: true, name: true, email: true } },
+  fromHolderDept: { select: { id: true, name: true } },
+  toHolderUser: { select: { id: true, name: true, email: true } },
+  toHolderDept: { select: { id: true, name: true } },
+  requestedBy: { select: { id: true, name: true } },
+  approvedBy: { select: { id: true, name: true } },
+};
 
 export const createTransferRequest = async (req, res) => {
   const data = createSchema.parse(req.body);
+  const toHolderUserId = data.toHolderUserId ?? data.toUserId ?? null;
+  const toHolderDepartmentId = data.toHolderDepartmentId ?? null;
 
-  const allocation = await prisma.allocation.findUnique({
-    where: { id: data.allocationId },
-    include: {
-      asset: { select: { id: true, assetTag: true, name: true } },
-      user: { select: { id: true, name: true } },
-    },
-  });
+  const allocation = data.allocationId
+    ? await prisma.allocation.findUnique({
+        where: { id: data.allocationId },
+        include: {
+          asset: { select: { id: true, assetTag: true, name: true, status: true } },
+          holderUser: { select: { id: true, name: true } },
+          holderDepartment: { select: { id: true, name: true } },
+        },
+      })
+    : await prisma.allocation.findFirst({
+        where: { assetId: data.assetId, status: { in: ['ACTIVE', 'OVERDUE'] } },
+        include: {
+          asset: { select: { id: true, assetTag: true, name: true, status: true } },
+          holderUser: { select: { id: true, name: true } },
+          holderDepartment: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
 
-  if (!allocation) throw new ApiError(404, 'Allocation not found');
-  if (allocation.status !== 'ACTIVE' && allocation.status !== 'OVERDUE') {
+  if (!allocation) throw new ApiError(404, 'Active allocation not found for this transfer');
+  if (!['ACTIVE', 'OVERDUE'].includes(allocation.status)) {
     throw new ApiError(409, 'Can only transfer from an active allocation');
   }
 
-  const toUser = await prisma.user.findUnique({ where: { id: data.toUserId } });
-  if (!toUser) throw new ApiError(404, 'Target employee not found');
+  const [toUser, toDepartment] = await Promise.all([
+    toHolderUserId ? prisma.user.findUnique({ where: { id: toHolderUserId } }) : null,
+    toHolderDepartmentId ? prisma.department.findUnique({ where: { id: toHolderDepartmentId } }) : null,
+  ]);
+  if (toHolderUserId && !toUser) throw new ApiError(404, 'Target employee not found');
+  if (toHolderDepartmentId && !toDepartment) throw new ApiError(404, 'Target department not found');
 
-  // Ensure no pending transfer already exists for this allocation
   const existing = await prisma.transferRequest.findFirst({
-    where: { allocationId: data.allocationId, status: 'PENDING' },
+    where: { assetId: allocation.assetId, status: 'REQUESTED' },
   });
-  if (existing) throw new ApiError(409, 'A pending transfer request already exists for this allocation');
+  if (existing) throw new ApiError(409, 'A pending transfer request already exists for this asset');
 
   const transfer = await prisma.transferRequest.create({
     data: {
-      allocationId: data.allocationId,
       assetId: allocation.assetId,
-      fromUserId: allocation.userId,
-      toUserId: data.toUserId,
+      fromHolderUserId: allocation.holderUserId,
+      fromHolderDepartmentId: allocation.holderDepartmentId,
+      toHolderUserId,
+      toHolderDepartmentId,
       requestedById: req.user.userId,
-      reason: data.reason ?? null,
-      status: 'PENDING',
+      status: 'REQUESTED',
     },
-    include: {
-      asset: { select: { id: true, assetTag: true, name: true } },
-      fromUser: { select: { id: true, name: true } },
-      toUser: { select: { id: true, name: true, email: true } },
-      requestedBy: { select: { id: true, name: true } },
-    },
+    include: transferInclude,
   });
 
-  // Notify Asset Managers of pending transfer
+  const fromName = allocation.holderUser?.name ?? allocation.holderDepartment?.name ?? 'current holder';
+  const toName = toUser?.name ?? toDepartment?.name ?? 'new holder';
   await notifyService.notifyManagers(
     'TRANSFER_REQUESTED',
-    `Transfer request: ${allocation.asset.name} from ${allocation.user.name} to ${toUser.name}`,
+    `Transfer request: ${allocation.asset.name} from ${fromName} to ${toName}`,
     { entityType: 'TransferRequest', entityId: transfer.id }
   );
 
   await activityLogService.log(req.user.userId, 'TRANSFER_REQUESTED', 'TransferRequest', transfer.id, {
-    assetId: allocation.assetId, fromUserId: allocation.userId, toUserId: data.toUserId,
+    assetId: allocation.assetId,
+    fromHolderUserId: allocation.holderUserId,
+    fromHolderDepartmentId: allocation.holderDepartmentId,
+    toHolderUserId,
+    toHolderDepartmentId,
+    reason: data.reason,
   });
 
   res.status(201).json({ success: true, data: transfer });
@@ -81,59 +111,74 @@ export const createTransferRequest = async (req, res) => {
 export const approveTransfer = async (req, res) => {
   const transfer = await prisma.transferRequest.findUnique({
     where: { id: req.params.id },
-    include: {
-      allocation: true,
-      asset: { select: { id: true, assetTag: true, name: true } },
-      fromUser: { select: { id: true, name: true, email: true } },
-      toUser: { select: { id: true, name: true, email: true } },
-    },
+    include: transferInclude,
   });
 
   if (!transfer) throw new ApiError(404, 'Transfer request not found');
-  if (transfer.status !== 'PENDING') throw new ApiError(409, `Transfer is already ${transfer.status}`);
+  if (transfer.status !== 'REQUESTED') throw new ApiError(409, `Transfer is already ${transfer.status}`);
 
-  // Execute transfer in a transaction
+  const activeAllocation = await prisma.allocation.findFirst({
+    where: { assetId: transfer.assetId, status: { in: ['ACTIVE', 'OVERDUE'] } },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!activeAllocation) throw new ApiError(409, 'No active allocation exists for this asset');
+
   await prisma.$transaction([
-    // Update transfer request status
     prisma.transferRequest.update({
       where: { id: transfer.id },
-      data: { status: 'APPROVED', approvedById: req.user.userId },
+      data: { status: 'REALLOCATED', approvedById: req.user.userId },
     }),
-    // Close old allocation
     prisma.allocation.update({
-      where: { id: transfer.allocationId },
-      data: { status: 'RETURNED', returnedAt: new Date(), conditionNotes: 'Transferred to another employee' },
+      where: { id: activeAllocation.id },
+      data: {
+        status: 'RETURNED',
+        returnedDate: new Date(),
+        conditionCheckinNotes: 'Transferred to another holder',
+      },
     }),
-    // Create new allocation for the recipient
     prisma.allocation.create({
       data: {
         assetId: transfer.assetId,
-        userId: transfer.toUserId,
-        allocatedById: req.user.userId,
+        holderUserId: transfer.toHolderUserId,
+        holderDepartmentId: transfer.toHolderDepartmentId,
+        allocatedDate: new Date(),
         status: 'ACTIVE',
+      },
+    }),
+    prisma.asset.update({
+      where: { id: transfer.assetId },
+      data: {
+        status: 'ALLOCATED',
+        holderUserId: transfer.toHolderUserId,
+        holderDepartmentId: transfer.toHolderDepartmentId,
       },
     }),
   ]);
 
-  // Notify both parties
-  await notifyService.trigger(
-    'TRANSFER_APPROVED',
-    `Transfer approved: ${transfer.asset.name} (${transfer.asset.assetTag}) is now assigned to you`,
-    [transfer.toUserId],
-    { entityType: 'TransferRequest', entityId: transfer.id }
-  );
-  await notifyService.trigger(
-    'TRANSFER_APPROVED',
-    `Your ${transfer.asset.name} has been transferred to ${transfer.toUser.name}`,
-    [transfer.fromUserId],
-    { entityType: 'TransferRequest', entityId: transfer.id }
-  );
+  if (transfer.toHolderUserId) {
+    await notifyService.trigger(
+      'TRANSFER_APPROVED',
+      `Transfer approved: ${transfer.asset.name} (${transfer.asset.assetTag}) is now assigned to you`,
+      [transfer.toHolderUserId],
+      { entityType: 'TransferRequest', entityId: transfer.id }
+    );
+  }
+  if (transfer.fromHolderUserId) {
+    await notifyService.trigger(
+      'TRANSFER_APPROVED',
+      `Your ${transfer.asset.name} has been transferred`,
+      [transfer.fromHolderUserId],
+      { entityType: 'TransferRequest', entityId: transfer.id }
+    );
+  }
 
   await activityLogService.log(req.user.userId, 'TRANSFER_APPROVED', 'TransferRequest', transfer.id, {
-    assetId: transfer.assetId, fromUserId: transfer.fromUserId, toUserId: transfer.toUserId,
+    assetId: transfer.assetId,
+    fromHolderUserId: transfer.fromHolderUserId,
+    toHolderUserId: transfer.toHolderUserId,
   });
 
-  res.json({ success: true, message: 'Transfer approved successfully' });
+  res.json({ success: true, message: 'Transfer approved and asset reallocated successfully' });
 };
 
 export const rejectTransfer = async (req, res) => {
@@ -141,14 +186,11 @@ export const rejectTransfer = async (req, res) => {
 
   const transfer = await prisma.transferRequest.findUnique({
     where: { id: req.params.id },
-    include: {
-      fromUser: { select: { id: true, name: true } },
-      asset: { select: { id: true, assetTag: true, name: true } },
-    },
+    include: transferInclude,
   });
 
   if (!transfer) throw new ApiError(404, 'Transfer request not found');
-  if (transfer.status !== 'PENDING') throw new ApiError(409, `Transfer is already ${transfer.status}`);
+  if (transfer.status !== 'REQUESTED') throw new ApiError(409, `Transfer is already ${transfer.status}`);
 
   await prisma.transferRequest.update({
     where: { id: transfer.id },
@@ -170,26 +212,24 @@ export const rejectTransfer = async (req, res) => {
 export const getTransferRequests = async (req, res) => {
   const query = querySchema.parse(req.query);
   const skip = (query.page - 1) * query.limit;
+  const status = query.status === 'PENDING' ? 'REQUESTED' : query.status;
 
   const where = {
-    ...(query.status && { status: query.status }),
+    ...(status && { status }),
     ...(query.assetId && { assetId: query.assetId }),
-    // Employees only see their own
     ...(req.user.role === 'EMPLOYEE' && {
-      OR: [{ fromUserId: req.user.userId }, { toUserId: req.user.userId }, { requestedById: req.user.userId }],
+      OR: [
+        { fromHolderUserId: req.user.userId },
+        { toHolderUserId: req.user.userId },
+        { requestedById: req.user.userId },
+      ],
     }),
   };
 
   const [transfers, total] = await Promise.all([
     prisma.transferRequest.findMany({
       where,
-      include: {
-        asset: { select: { id: true, assetTag: true, name: true } },
-        fromUser: { select: { id: true, name: true } },
-        toUser: { select: { id: true, name: true } },
-        requestedBy: { select: { id: true, name: true } },
-        approvedBy: { select: { id: true, name: true } },
-      },
+      include: transferInclude,
       orderBy: { createdAt: 'desc' },
       skip,
       take: query.limit,
@@ -198,7 +238,8 @@ export const getTransferRequests = async (req, res) => {
   ]);
 
   res.json({
-    success: true, data: transfers,
+    success: true,
+    data: transfers,
     pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) },
   });
 };

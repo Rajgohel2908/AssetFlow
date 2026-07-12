@@ -23,16 +23,17 @@ export const getKPIs = async (req, res) => {
     prisma.allocation.findMany({
       where: {
         status: { in: ['ACTIVE', 'OVERDUE'] },
-        dueDate: { lt: now, not: null },
+        expectedReturnDate: { lt: now, not: null },
       },
       include: {
         asset: { select: { id: true, assetTag: true, name: true } },
-        user: { select: { id: true, name: true, department: { select: { name: true } } } },
+        holderUser: { select: { id: true, name: true, department: { select: { name: true } } } },
+        holderDepartment: { select: { id: true, name: true } },
       },
-      orderBy: { dueDate: 'asc' },
+      orderBy: { expectedReturnDate: 'asc' },
       take: 20,
     }),
-    prisma.asset.aggregate({ _sum: { purchasePrice: true } }),
+    prisma.asset.aggregate({ _sum: { acquisitionCost: true } }),
   ]);
 
   // Build status map
@@ -50,7 +51,7 @@ export const getKPIs = async (req, res) => {
     retired: statusMap.RETIRED ?? 0,
     disposed: statusMap.DISPOSED ?? 0,
     overdueReturns: overdueAllocations.length,
-    totalValue: totalValue._sum.purchasePrice ?? 0,
+    totalValue: totalValue._sum.acquisitionCost ?? 0,
   };
 
   const overdueList = overdueAllocations.map((a) => ({
@@ -58,11 +59,11 @@ export const getKPIs = async (req, res) => {
     assetId: a.assetId,
     assetTag: a.asset.assetTag,
     assetName: a.asset.name,
-    employeeName: a.user.name,
-    employeeId: a.userId,
-    department: a.user.department?.name ?? 'N/A',
-    dueDate: a.dueDate,
-    daysOverdue: Math.floor((now - new Date(a.dueDate)) / (1000 * 60 * 60 * 24)),
+    employeeName: a.holderUser?.name ?? a.holderDepartment?.name ?? 'N/A',
+    employeeId: a.holderUserId,
+    department: a.holderUser?.department?.name ?? a.holderDepartment?.name ?? 'N/A',
+    dueDate: a.expectedReturnDate,
+    daysOverdue: Math.floor((now - new Date(a.expectedReturnDate)) / (1000 * 60 * 60 * 24)),
   }));
 
   res.json({ success: true, data: { kpis, overdueList } });
@@ -80,11 +81,11 @@ export const getQuickStats = async (req, res) => {
     recentLogs,
   ] = await Promise.all([
     prisma.maintenanceRequest.count({ where: { status: 'PENDING' } }),
-    prisma.transferRequest.count({ where: { status: 'PENDING' } }),
+    prisma.transferRequest.count({ where: { status: 'REQUESTED' } }),
     prisma.auditCycle.count({ where: { status: 'OPEN' } }),
     prisma.activityLog.findMany({
       include: { actor: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { timestamp: 'desc' },
       take: 10,
     }),
   ]);

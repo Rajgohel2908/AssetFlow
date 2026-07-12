@@ -29,7 +29,7 @@ export const hasOverlap = (existingStart, existingEnd, newStart, newEnd) => {
 };
 
 /**
- * Check if a booking for a given resource overlaps with existing confirmed bookings.
+ * Check if a booking for a given bookable asset overlaps with existing active bookings.
  * Optionally excludes a specific booking ID (for reschedule).
  *
  * @param {string}  resourceId
@@ -42,7 +42,7 @@ export const checkBookingOverlap = async (resourceId, startTime, endTime, exclud
   const conflicting = await prisma.booking.findFirst({
     where: {
       resourceId,
-      status: 'CONFIRMED',
+      status: { in: ['UPCOMING', 'ONGOING'] },
       ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
       // existingStart < newEnd AND existingEnd > newStart
       AND: [
@@ -51,8 +51,8 @@ export const checkBookingOverlap = async (resourceId, startTime, endTime, exclud
       ],
     },
     include: {
-      user: { select: { id: true, name: true, email: true } },
-      resource: { select: { id: true, name: true } },
+      bookedBy: { select: { id: true, name: true, email: true } },
+      resource: { select: { id: true, name: true, assetTag: true } },
     },
   });
 

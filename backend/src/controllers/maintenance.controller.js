@@ -5,28 +5,37 @@ import { assertTransition } from '../utils/stateTransitions.js';
 import { activityLogService } from '../services/activityLog.service.js';
 import { notifyService } from '../services/notification.service.js';
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
-
 const createSchema = z.object({
   assetId: z.string().cuid(),
-  issue: z.string().min(5, 'Issue description must be at least 5 characters'),
+  issue: z.string().min(5).optional(),
+  issueDescription: z.string().min(5).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
+  photoUrl: z.string().url().optional().nullable(),
   estimatedCost: z.coerce.number().nonnegative().optional().nullable(),
   notes: z.string().optional(),
+}).refine((data) => data.issue || data.issueDescription, {
+  message: 'Issue description is required',
+  path: ['issueDescription'],
 });
 
 const querySchema = z.object({
   assetId: z.string().optional(),
-  status: z.enum(['PENDING', 'APPROVED', 'IN_PROGRESS', 'RESOLVED']).optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'TECHNICIAN_ASSIGNED', 'IN_PROGRESS', 'RESOLVED']).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
-// ─── Controllers ──────────────────────────────────────────────────────────────
+const requestInclude = {
+  asset: { select: { id: true, assetTag: true, name: true, status: true, category: { select: { name: true } } } },
+  raisedBy: { select: { id: true, name: true, email: true } },
+  technician: { select: { id: true, name: true, email: true } },
+  approvedBy: { select: { id: true, name: true } },
+};
 
 export const createMaintenanceRequest = async (req, res) => {
   const data = createSchema.parse(req.body);
+  const issueDescription = data.issueDescription ?? data.issue;
 
   const asset = await prisma.asset.findUnique({ where: { id: data.assetId } });
   if (!asset) throw new ApiError(404, 'Asset not found');
@@ -36,38 +45,32 @@ export const createMaintenanceRequest = async (req, res) => {
   const request = await prisma.maintenanceRequest.create({
     data: {
       assetId: data.assetId,
-      requestedById: req.user.userId,
-      issue: data.issue,
+      raisedById: req.user.userId,
+      issueDescription,
       priority: data.priority,
-      estimatedCost: data.estimatedCost ?? null,
-      notes: data.notes ?? null,
+      photoUrl: data.photoUrl ?? null,
       status: 'PENDING',
     },
-    include: {
-      asset: { select: { id: true, assetTag: true, name: true, status: true } },
-      requestedBy: { select: { id: true, name: true } },
-    },
+    include: requestInclude,
   });
 
-  // Notify asset managers
   await notifyService.notifyManagers(
     'MAINTENANCE_REQUESTED',
-    `Maintenance requested for ${asset.name} (${asset.assetTag}): ${data.issue}`,
+    `Maintenance requested for ${asset.name} (${asset.assetTag}): ${issueDescription}`,
     { entityType: 'MaintenanceRequest', entityId: request.id }
   );
 
   await activityLogService.log(req.user.userId, 'MAINTENANCE_REQUESTED', 'MaintenanceRequest', request.id, {
-    assetId: data.assetId, issue: data.issue, priority: data.priority,
+    assetId: data.assetId,
+    issueDescription,
+    priority: data.priority,
+    estimatedCost: data.estimatedCost,
+    notes: data.notes,
   });
 
   res.status(201).json({ success: true, data: request });
 };
 
-/**
- * PATCH /maintenance-requests/:id/approve
- * BUSINESS RULE 6: Approval is required before status flips to UNDER_MAINTENANCE.
- * Transitions: PENDING → APPROVED + asset → UNDER_MAINTENANCE
- */
 export const approveMaintenanceRequest = async (req, res) => {
   const request = await prisma.maintenanceRequest.findUnique({
     where: { id: req.params.id },
@@ -75,14 +78,10 @@ export const approveMaintenanceRequest = async (req, res) => {
   });
 
   if (!request) throw new ApiError(404, 'Maintenance request not found');
-  if (request.status !== 'PENDING') {
-    throw new ApiError(409, `Cannot approve — request is already ${request.status}`);
-  }
+  if (request.status !== 'PENDING') throw new ApiError(409, `Cannot approve because request is ${request.status}`);
 
-  // Validate asset transition AVAILABLE/ALLOCATED → UNDER_MAINTENANCE
   assertTransition(request.asset.status, 'UNDER_MAINTENANCE');
 
-  // Atomic: approve request + flip asset status
   await prisma.$transaction([
     prisma.maintenanceRequest.update({
       where: { id: request.id },
@@ -97,12 +96,13 @@ export const approveMaintenanceRequest = async (req, res) => {
   await notifyService.trigger(
     'MAINTENANCE_APPROVED',
     `Maintenance request for ${request.asset.name} (${request.asset.assetTag}) has been approved`,
-    [request.requestedById],
+    [request.raisedById],
     { entityType: 'MaintenanceRequest', entityId: request.id }
   );
 
   await activityLogService.log(req.user.userId, 'MAINTENANCE_APPROVED', 'MaintenanceRequest', request.id, {
-    assetId: request.assetId, previousAssetStatus: request.asset.status,
+    assetId: request.assetId,
+    previousAssetStatus: request.asset.status,
   });
 
   res.json({ success: true, message: 'Maintenance request approved. Asset is now Under Maintenance.' });
@@ -113,8 +113,8 @@ export const assignTechnician = async (req, res) => {
 
   const request = await prisma.maintenanceRequest.findUnique({ where: { id: req.params.id } });
   if (!request) throw new ApiError(404, 'Maintenance request not found');
-  if (!['APPROVED', 'IN_PROGRESS'].includes(request.status)) {
-    throw new ApiError(409, 'Can only assign technician to approved or in-progress requests');
+  if (!['APPROVED', 'TECHNICIAN_ASSIGNED', 'IN_PROGRESS'].includes(request.status)) {
+    throw new ApiError(409, 'Can only assign technician after approval');
   }
 
   const technician = await prisma.user.findUnique({ where: { id: technicianId } });
@@ -122,11 +122,8 @@ export const assignTechnician = async (req, res) => {
 
   const updated = await prisma.maintenanceRequest.update({
     where: { id: request.id },
-    data: { technicianId, status: 'IN_PROGRESS' },
-    include: {
-      asset: { select: { id: true, assetTag: true, name: true } },
-      technician: { select: { id: true, name: true, email: true } },
-    },
+    data: { technicianId, status: 'TECHNICIAN_ASSIGNED' },
+    include: requestInclude,
   });
 
   await notifyService.trigger(
@@ -141,10 +138,6 @@ export const assignTechnician = async (req, res) => {
   res.json({ success: true, data: updated });
 };
 
-/**
- * PATCH /maintenance-requests/:id/resolve
- * Transitions: IN_PROGRESS/APPROVED → RESOLVED + asset → AVAILABLE
- */
 export const resolveMaintenanceRequest = async (req, res) => {
   const { notes } = z.object({ notes: z.string().optional() }).parse(req.body);
 
@@ -154,36 +147,41 @@ export const resolveMaintenanceRequest = async (req, res) => {
   });
 
   if (!request) throw new ApiError(404, 'Maintenance request not found');
-  if (!['APPROVED', 'IN_PROGRESS'].includes(request.status)) {
-    throw new ApiError(409, `Cannot resolve — request is ${request.status}`);
+  if (!['APPROVED', 'TECHNICIAN_ASSIGNED', 'IN_PROGRESS'].includes(request.status)) {
+    throw new ApiError(409, `Cannot resolve because request is ${request.status}`);
   }
 
-  // Validate asset transition: UNDER_MAINTENANCE → AVAILABLE
-  assertTransition(request.asset.status, 'AVAILABLE');
+  const activeAllocation = await prisma.allocation.findFirst({
+    where: { assetId: request.assetId, status: { in: ['ACTIVE', 'OVERDUE'] } },
+  });
+  const nextAssetStatus = activeAllocation ? 'ALLOCATED' : 'AVAILABLE';
+  assertTransition(request.asset.status, nextAssetStatus);
 
   await prisma.$transaction([
     prisma.maintenanceRequest.update({
       where: { id: request.id },
-      data: { status: 'RESOLVED', resolvedAt: new Date(), notes: notes ?? request.notes },
+      data: { status: 'RESOLVED' },
     }),
     prisma.asset.update({
       where: { id: request.assetId },
-      data: { status: 'AVAILABLE' },
+      data: { status: nextAssetStatus },
     }),
   ]);
 
   await notifyService.trigger(
     'MAINTENANCE_RESOLVED',
-    `${request.asset.name} (${request.asset.assetTag}) maintenance is complete — asset is now available`,
-    [request.requestedById],
+    `${request.asset.name} (${request.asset.assetTag}) maintenance is complete`,
+    [request.raisedById],
     { entityType: 'MaintenanceRequest', entityId: request.id }
   );
 
   await activityLogService.log(req.user.userId, 'MAINTENANCE_RESOLVED', 'MaintenanceRequest', request.id, {
-    assetId: request.assetId, notes,
+    assetId: request.assetId,
+    notes,
+    nextAssetStatus,
   });
 
-  res.json({ success: true, message: 'Maintenance resolved. Asset is now Available.' });
+  res.json({ success: true, message: `Maintenance resolved. Asset is now ${nextAssetStatus}.` });
 };
 
 export const getMaintenanceRequests = async (req, res) => {
@@ -194,18 +192,13 @@ export const getMaintenanceRequests = async (req, res) => {
     ...(query.assetId && { assetId: query.assetId }),
     ...(query.status && { status: query.status }),
     ...(query.priority && { priority: query.priority }),
-    ...(req.user.role === 'EMPLOYEE' && { requestedById: req.user.userId }),
+    ...(req.user.role === 'EMPLOYEE' && { raisedById: req.user.userId }),
   };
 
   const [requests, total] = await Promise.all([
     prisma.maintenanceRequest.findMany({
       where,
-      include: {
-        asset: { select: { id: true, assetTag: true, name: true, status: true } },
-        requestedBy: { select: { id: true, name: true } },
-        technician: { select: { id: true, name: true } },
-        approvedBy: { select: { id: true, name: true } },
-      },
+      include: requestInclude,
       orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
       skip,
       take: query.limit,
@@ -214,7 +207,8 @@ export const getMaintenanceRequests = async (req, res) => {
   ]);
 
   res.json({
-    success: true, data: requests,
+    success: true,
+    data: requests,
     pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) },
   });
 };
@@ -222,12 +216,7 @@ export const getMaintenanceRequests = async (req, res) => {
 export const getMaintenanceRequest = async (req, res) => {
   const request = await prisma.maintenanceRequest.findUnique({
     where: { id: req.params.id },
-    include: {
-      asset: { select: { id: true, assetTag: true, name: true, status: true, category: { select: { name: true } } } },
-      requestedBy: { select: { id: true, name: true, email: true } },
-      technician: { select: { id: true, name: true, email: true } },
-      approvedBy: { select: { id: true, name: true } },
-    },
+    include: requestInclude,
   });
   if (!request) throw new ApiError(404, 'Maintenance request not found');
   res.json({ success: true, data: request });

@@ -5,7 +5,7 @@ import { activityLogService } from './activityLog.service.js';
 
 // ─── Overdue Allocation Cron Job ──────────────────────────────────────────────
 //
-// Runs every hour. Marks allocations past their dueDate as OVERDUE and
+// Runs every hour. Marks allocations past their expectedReturnDate as OVERDUE and
 // notifies the asset holder + all Asset Managers.
 
 const checkOverdueAllocations = async () => {
@@ -16,11 +16,12 @@ const checkOverdueAllocations = async () => {
     const overdueAllocations = await prisma.allocation.findMany({
       where: {
         status: 'ACTIVE',
-        dueDate: { lt: now },
+        expectedReturnDate: { lt: now },
       },
       include: {
         asset: { select: { id: true, name: true, assetTag: true } },
-        user: { select: { id: true, name: true, email: true } },
+        holderUser: { select: { id: true, name: true, email: true } },
+        holderDepartment: { select: { id: true, name: true } },
       },
     });
 
@@ -36,17 +37,19 @@ const checkOverdueAllocations = async () => {
       });
 
       // Notify the holder
-      await notifyService.trigger(
-        'ALLOCATION_OVERDUE',
-        `Your allocation of ${allocation.asset.name} (${allocation.asset.assetTag}) is overdue. Please return it immediately.`,
-        [allocation.user.id],
-        { entityType: 'Allocation', entityId: allocation.id }
-      );
+      if (allocation.holderUserId) {
+        await notifyService.trigger(
+          'ALLOCATION_OVERDUE',
+          `Your allocation of ${allocation.asset.name} (${allocation.asset.assetTag}) is overdue. Please return it immediately.`,
+          [allocation.holderUserId],
+          { entityType: 'Allocation', entityId: allocation.id }
+        );
+      }
 
       // Notify all Asset Managers
       await notifyService.notifyManagers(
         'ALLOCATION_OVERDUE',
-        `Overdue return: ${allocation.asset.name} (${allocation.asset.assetTag}) held by ${allocation.user.name}`,
+        `Overdue return: ${allocation.asset.name} (${allocation.asset.assetTag}) held by ${allocation.holderUser?.name ?? allocation.holderDepartment?.name ?? 'Unknown'}`,
         { entityType: 'Allocation', entityId: allocation.id }
       );
 
@@ -55,7 +58,7 @@ const checkOverdueAllocations = async () => {
         'ALLOCATION_MARKED_OVERDUE',
         'Allocation',
         allocation.id,
-        { userId: allocation.user.id, assetId: allocation.asset.id, dueDate: allocation.dueDate }
+        { holderUserId: allocation.holderUserId, assetId: allocation.asset.id, expectedReturnDate: allocation.expectedReturnDate }
       );
     }
   } catch (err) {

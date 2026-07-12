@@ -1,17 +1,18 @@
 import { z } from 'zod';
 import prisma from '../lib/prisma.js';
 import { ApiError } from '../utils/apiError.js';
-import { assertTransition } from '../utils/stateTransitions.js';
 import { activityLogService } from '../services/activityLog.service.js';
 import { notifyService } from '../services/notification.service.js';
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
-
 const createSchema = z.object({
   assetId: z.string().cuid(),
-  userId: z.string().cuid(),
+  userId: z.string().cuid().optional(),
+  holderUserId: z.string().cuid().optional(),
+  holderDepartmentId: z.string().cuid().optional(),
   dueDate: z.string().datetime().optional().nullable(),
   notes: z.string().optional(),
+}).refine((data) => Boolean(data.userId || data.holderUserId) !== Boolean(data.holderDepartmentId), {
+  message: 'Allocate to exactly one employee or department',
 });
 
 const returnSchema = z.object({
@@ -26,36 +27,42 @@ const querySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
-// ─── Controllers ──────────────────────────────────────────────────────────────
-
-/**
- * POST /allocations
- * BUSINESS RULE 4: Reject with 409 + currentHolder info if asset isn't AVAILABLE.
- */
 export const createAllocation = async (req, res) => {
   const data = createSchema.parse(req.body);
+  const holderUserId = data.holderUserId ?? data.userId ?? null;
+  const holderDepartmentId = data.holderDepartmentId ?? null;
 
-  const [asset, recipient] = await Promise.all([
+  const [asset, recipient, department] = await Promise.all([
     prisma.asset.findUnique({
       where: { id: data.assetId },
       include: {
         allocations: {
           where: { status: { in: ['ACTIVE', 'OVERDUE'] } },
-          include: { user: { select: { id: true, name: true, email: true, department: { select: { name: true } } } } },
+          include: {
+            holderUser: { select: { id: true, name: true, email: true, department: { select: { name: true } } } },
+            holderDepartment: { select: { id: true, name: true } },
+          },
           take: 1,
           orderBy: { createdAt: 'desc' },
         },
       },
     }),
-    prisma.user.findUnique({ where: { id: data.userId }, select: { id: true, name: true, email: true } }),
+    holderUserId
+      ? prisma.user.findUnique({ where: { id: holderUserId }, select: { id: true, name: true, email: true } })
+      : null,
+    holderDepartmentId
+      ? prisma.department.findUnique({ where: { id: holderDepartmentId }, select: { id: true, name: true } })
+      : null,
   ]);
 
   if (!asset) throw new ApiError(404, 'Asset not found');
-  if (!recipient) throw new ApiError(404, 'Employee not found');
+  if (holderUserId && !recipient) throw new ApiError(404, 'Employee not found');
+  if (holderDepartmentId && !department) throw new ApiError(404, 'Department not found');
+  if (asset.isBookable) throw new ApiError(409, 'Bookable shared resources must be booked, not allocated');
 
-  // BUSINESS RULE 4: Must be AVAILABLE — return 409 with currentHolder
   if (asset.status !== 'AVAILABLE') {
-    const currentHolder = asset.allocations[0]?.user ?? null;
+    const activeAllocation = asset.allocations[0] ?? null;
+    const currentHolder = activeAllocation?.holderUser ?? activeAllocation?.holderDepartment ?? null;
     throw new ApiError(409, `Asset is not available for allocation. Current status: ${asset.status}`, [
       {
         code: 'ASSET_NOT_AVAILABLE',
@@ -64,54 +71,55 @@ export const createAllocation = async (req, res) => {
           ? {
               id: currentHolder.id,
               name: currentHolder.name,
-              email: currentHolder.email,
-              department: currentHolder.department?.name ?? null,
+              email: currentHolder.email ?? null,
+              department: currentHolder.department?.name ?? activeAllocation?.holderDepartment?.name ?? null,
             }
           : null,
       },
     ]);
   }
 
-  // Use a transaction to ensure atomicity
   const [allocation] = await prisma.$transaction([
     prisma.allocation.create({
       data: {
         assetId: data.assetId,
-        userId: data.userId,
-        allocatedById: req.user.userId,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        holderUserId,
+        holderDepartmentId,
+        allocatedDate: new Date(),
+        expectedReturnDate: data.dueDate ? new Date(data.dueDate) : null,
         status: 'ACTIVE',
       },
       include: {
         asset: { select: { id: true, assetTag: true, name: true } },
-        user: { select: { id: true, name: true, email: true } },
-        allocatedBy: { select: { id: true, name: true } },
+        holderUser: { select: { id: true, name: true, email: true } },
+        holderDepartment: { select: { id: true, name: true } },
       },
     }),
     prisma.asset.update({
       where: { id: data.assetId },
-      data: { status: 'ALLOCATED' },
+      data: { status: 'ALLOCATED', holderUserId, holderDepartmentId },
     }),
   ]);
 
-  await notifyService.trigger(
-    'ASSET_ALLOCATED',
-    `${asset.name} (${asset.assetTag}) has been allocated to you`,
-    [data.userId],
-    { entityType: 'Allocation', entityId: allocation.id }
-  );
+  if (holderUserId) {
+    await notifyService.trigger(
+      'ASSET_ALLOCATED',
+      `${asset.name} (${asset.assetTag}) has been allocated to you`,
+      [holderUserId],
+      { entityType: 'Allocation', entityId: allocation.id }
+    );
+  }
 
   await activityLogService.log(req.user.userId, 'ASSET_ALLOCATED', 'Allocation', allocation.id, {
-    assetId: data.assetId, userId: data.userId, dueDate: data.dueDate,
+    assetId: data.assetId,
+    holderUserId,
+    holderDepartmentId,
+    dueDate: data.dueDate,
   });
 
   res.status(201).json({ success: true, data: allocation });
 };
 
-/**
- * POST /allocations/:id/return
- * Captures condition notes, reverts asset to AVAILABLE.
- */
 export const returnAllocation = async (req, res) => {
   const { conditionNotes } = returnSchema.parse(req.body);
 
@@ -119,37 +127,36 @@ export const returnAllocation = async (req, res) => {
     where: { id: req.params.id },
     include: {
       asset: { select: { id: true, assetTag: true, name: true, status: true } },
-      user: { select: { id: true, name: true } },
+      holderUser: { select: { id: true, name: true } },
+      holderDepartment: { select: { id: true, name: true } },
     },
   });
 
   if (!allocation) throw new ApiError(404, 'Allocation not found');
   if (allocation.status === 'RETURNED') throw new ApiError(409, 'This allocation has already been returned');
 
-  // Employee can only return their own allocation; Asset Managers/Admins can return any
-  const isOwner = allocation.userId === req.user.userId;
+  const isOwner = allocation.holderUserId === req.user.userId;
   const isManager = ['ASSET_MANAGER', 'ADMIN'].includes(req.user.role);
-  if (!isOwner && !isManager) {
-    throw new ApiError(403, 'You can only return your own allocations');
-  }
+  if (!isOwner && !isManager) throw new ApiError(403, 'You can only return your own allocations');
 
   await prisma.$transaction([
     prisma.allocation.update({
       where: { id: req.params.id },
       data: {
         status: 'RETURNED',
-        returnedAt: new Date(),
-        conditionNotes: conditionNotes ?? null,
+        returnedDate: new Date(),
+        conditionCheckinNotes: conditionNotes ?? null,
       },
     }),
     prisma.asset.update({
       where: { id: allocation.assetId },
-      data: { status: 'AVAILABLE' },
+      data: { status: 'AVAILABLE', holderUserId: null, holderDepartmentId: null },
     }),
   ]);
 
   await activityLogService.log(req.user.userId, 'ASSET_RETURNED', 'Allocation', allocation.id, {
-    assetId: allocation.assetId, conditionNotes,
+    assetId: allocation.assetId,
+    conditionNotes,
   });
 
   res.json({ success: true, message: 'Asset returned successfully', data: { allocationId: allocation.id } });
@@ -159,13 +166,12 @@ export const getAllocations = async (req, res) => {
   const query = querySchema.parse(req.query);
   const skip = (query.page - 1) * query.limit;
 
-  // Employees can only see their own allocations
   const userFilter =
     req.user.role === 'EMPLOYEE'
-      ? { userId: req.user.userId }
+      ? { holderUserId: req.user.userId }
       : query.userId
-      ? { userId: query.userId }
-      : {};
+        ? { holderUserId: query.userId }
+        : {};
 
   const where = {
     ...userFilter,
@@ -178,8 +184,8 @@ export const getAllocations = async (req, res) => {
       where,
       include: {
         asset: { select: { id: true, assetTag: true, name: true, status: true, category: { select: { name: true } } } },
-        user: { select: { id: true, name: true, email: true } },
-        allocatedBy: { select: { id: true, name: true } },
+        holderUser: { select: { id: true, name: true, email: true, department: { select: { name: true } } } },
+        holderDepartment: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -200,9 +206,8 @@ export const getAllocation = async (req, res) => {
     where: { id: req.params.id },
     include: {
       asset: { select: { id: true, assetTag: true, name: true, status: true } },
-      user: { select: { id: true, name: true, email: true } },
-      allocatedBy: { select: { id: true, name: true } },
-      transferRequests: { orderBy: { createdAt: 'desc' }, take: 5 },
+      holderUser: { select: { id: true, name: true, email: true } },
+      holderDepartment: { select: { id: true, name: true } },
     },
   });
   if (!allocation) throw new ApiError(404, 'Allocation not found');

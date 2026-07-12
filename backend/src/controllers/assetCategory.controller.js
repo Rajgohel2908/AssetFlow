@@ -29,8 +29,19 @@ export const createCategory = async (req, res) => {
   const data = createSchema.parse(req.body);
 
   const category = await prisma.assetCategory.create({
-    data,
-    include: { _count: { select: { assets: true } } },
+    data: {
+      name: data.name,
+      customFields: {
+        create: data.customFieldSchema.map((field) => ({
+          fieldKey: field.key,
+          fieldType: field.type,
+        })),
+      },
+    },
+    include: {
+      customFields: true,
+      _count: { select: { assets: true } },
+    },
   });
 
   await activityLogService.log(req.user.userId, 'CATEGORY_CREATED', 'AssetCategory', category.id, { name: category.name });
@@ -40,7 +51,7 @@ export const createCategory = async (req, res) => {
 
 export const getCategories = async (req, res) => {
   const categories = await prisma.assetCategory.findMany({
-    include: { _count: { select: { assets: true } } },
+    include: { customFields: true, _count: { select: { assets: true } } },
     orderBy: { name: 'asc' },
   });
   res.json({ success: true, data: categories });
@@ -51,6 +62,7 @@ export const getCategory = async (req, res) => {
     where: { id: req.params.id },
     include: {
       _count: { select: { assets: true } },
+      customFields: true,
       assets: {
         select: { id: true, assetTag: true, name: true, status: true },
         take: 10,
@@ -70,8 +82,19 @@ export const updateCategory = async (req, res) => {
 
   const category = await prisma.assetCategory.update({
     where: { id: req.params.id },
-    data,
-    include: { _count: { select: { assets: true } } },
+    data: {
+      ...(data.name && { name: data.name }),
+      ...(data.customFieldSchema && {
+        customFields: {
+          deleteMany: {},
+          create: data.customFieldSchema.map((field) => ({
+            fieldKey: field.key,
+            fieldType: field.type,
+          })),
+        },
+      }),
+    },
+    include: { customFields: true, _count: { select: { assets: true } } },
   });
 
   await activityLogService.log(req.user.userId, 'CATEGORY_UPDATED', 'AssetCategory', category.id, {

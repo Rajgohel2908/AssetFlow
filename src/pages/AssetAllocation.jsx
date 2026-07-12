@@ -1,29 +1,29 @@
-﻿import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { Plus, X, CheckCircle, XCircle } from 'lucide-react';
 import DataTable from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import ConflictModal from '../components/common/ConflictModal';
 import ApprovalWorkflowStepper from '../components/common/ApprovalWorkflowStepper';
-import { allocations as initialAllocations, transferRequests, assets, employees } from '../data/mockData';
 import api from '../utils/api';
 
 const ALLOC_COLS = [
   { key: 'id',         label: 'ID' },
-  { key: 'assetName',  label: 'Asset' },
-  { key: 'assignedTo', label: 'Assigned To' },
-  { key: 'department', label: 'Department' },
-  { key: 'allocatedOn',label: 'Allocated On' },
-  { key: 'dueReturn',  label: 'Due Return', render: v => v ?? 'Indefinite' },
+  { key: 'asset',      label: 'Asset', render: v => v?.name || '—' },
+  { key: 'user',       label: 'Assigned To', render: v => v?.name || '—' },
+  { key: 'user.department', label: 'Department', render: (_, row) => row.user?.department?.name || '—' },
+  { key: 'createdAt',  label: 'Allocated On', render: v => new Date(v).toLocaleDateString() },
+  { key: 'expectedReturnDate',  label: 'Due Return', render: v => v ? new Date(v).toLocaleDateString() : 'Indefinite' },
   { key: 'status',     label: 'Status', render: v => <StatusBadge status={v} /> },
 ];
 
 const TRF_COLS = [
   { key: 'id',        label: 'ID' },
-  { key: 'assetName', label: 'Asset' },
-  { key: 'from',      label: 'From' },
-  { key: 'to',        label: 'To' },
-  { key: 'toDept',    label: 'To Dept' },
-  { key: 'date',      label: 'Requested' },
+  { key: 'asset',     label: 'Asset', render: v => v?.name || '—' },
+  { key: 'fromUser',  label: 'From', render: v => v?.name || '—' },
+  { key: 'toUser',    label: 'To', render: v => v?.name || '—' },
+  { key: 'toHolderDept', label: 'To Dept', render: v => v?.name || '—' },
+  { key: 'createdAt', label: 'Requested', render: v => new Date(v).toLocaleDateString() },
   { key: 'status',    label: 'Status', render: v => <StatusBadge status={v} /> },
 ];
 
@@ -33,39 +33,70 @@ export default function AssetAllocation() {
   const [showTrfForm,  setShowTrfForm]  = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
   const [conflictInfo, setConflictInfo] = useState('');
+  
   const [selectedAsset, setSelectedAsset] = useState('');
   const [selectedUser, setSelectedUser] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [stepperStatus, setStepperStatus] = useState('Approved');
-  const [allocs, setAllocs] = useState(initialAllocations);
-  const [trfs, setTrfs] = useState(transferRequests);
+  const [purpose, setPurpose] = useState('');
+  
+  const [trfAsset, setTrfAsset] = useState('');
+  const [trfUser, setTrfUser] = useState('');
+  const [trfReason, setTrfReason] = useState('');
 
-  const handleUpdateTransfer = (id, newStatus) => {
-    setTrfs(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+  const [stepperStatus, setStepperStatus] = useState('All');
+  
+  const [allocs, setAllocs] = useState([]);
+  const [trfs, setTrfs] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [employees, setEmployees] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      const [allocRes, trfRes, assetRes, empRes] = await Promise.all([
+        api.get('/allocations'),
+        api.get('/transfer-requests'),
+        api.get('/assets'),
+        api.get('/employees')
+      ]);
+      setAllocs(allocRes.data.data || []);
+      setTrfs(trfRes.data.data || []);
+      setAssets(assetRes.data.data || []);
+      setEmployees(empRes.data.data || []);
+    } catch (err) {
+      toast.error('Failed to load allocation data');
+      console.error(err);
+    }
   };
 
-  const availableAssets = assets.filter(a => a.status === 'Available');
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleUpdateTransfer = async (id, action) => { // action = 'approve' | 'reject'
+    try {
+      await api.patch(`/transfer-requests/${id}/${action}`);
+      toast.success(`Transfer request ${action}d successfully`);
+      fetchData(); // refresh data
+    } catch (err) {
+      toast.error(err.response?.data?.message || `Failed to ${action} transfer`);
+    }
+  };
+
+  const availableAssets = assets.filter(a => a.status === 'AVAILABLE');
 
   const handleAllocate = async () => {
-    if (!selectedAsset || !selectedUser) return alert('Select asset and user');
+    if (!selectedAsset || !selectedUser) return toast.error('Select asset and user');
     try {
-      const res = await api.post('/allocations', {
+      await api.post('/allocations', {
         assetId: selectedAsset,
         userId: selectedUser,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+        expectedReturnDate: dueDate ? new Date(dueDate).toISOString() : null,
+        conditionNotes: purpose || null,
       });
-      // success!
-      setAllocs([{
-        id: res.data.data.id,
-        assetName: assets.find(a => a.id === selectedAsset)?.name || selectedAsset,
-        assignedTo: employees.find(e => e.id === selectedUser)?.name || selectedUser,
-        department: 'N/A',
-        allocatedOn: new Date().toLocaleDateString(),
-        dueReturn: dueDate || null,
-        status: 'Active'
-      }, ...allocs]);
+      toast.success('Asset allocated successfully!');
       setShowForm(false);
-      setSelectedAsset(''); setSelectedUser(''); setDueDate('');
+      setSelectedAsset(''); setSelectedUser(''); setDueDate(''); setPurpose('');
+      fetchData();
     } catch (err) {
       if (err.response?.status === 409) {
         const holder = err.response.data.details?.[0]?.currentHolder;
@@ -76,8 +107,25 @@ export default function AssetAllocation() {
         }
         setConflictOpen(true);
       } else {
-        alert('Failed to allocate: ' + (err.response?.data?.message || err.message));
+        toast.error('Failed to allocate: ' + (err.response?.data?.message || err.message));
       }
+    }
+  };
+
+  const handleSubmitTransfer = async () => {
+    if (!trfAsset || !trfUser) return toast.error('Select asset and user');
+    try {
+      await api.post('/transfer-requests', {
+        assetId: trfAsset,
+        toUserId: trfUser,
+        reason: trfReason || null,
+      });
+      toast.success('Transfer requested successfully!');
+      setShowTrfForm(false);
+      setTrfAsset(''); setTrfUser(''); setTrfReason('');
+      fetchData();
+    } catch (err) {
+      toast.error('Failed to request transfer: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -111,20 +159,20 @@ export default function AssetAllocation() {
                 <label className="form-label">Asset *</label>
                 <select className="form-select" value={selectedAsset} onChange={e => setSelectedAsset(e.target.value)}>
                   <option value="">Select asset…</option>
-                  {availableAssets.map(a => <option key={a.id} value={a.id}>{a.name} ({a.id})</option>)}
+                  {availableAssets.map(a => <option key={a.id} value={a.id}>{a.name} ({a.assetTag})</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">Assign To *</label>
                 <select className="form-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
                   <option value="">Select employee…</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} — {e.department}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} — {e.department?.name}</option>)}
                 </select>
               </div>
               <div><label className="form-label">Due Return Date</label><input className="form-input" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
               <div>
-                <label className="form-label">Purpose</label>
-                <input className="form-input" placeholder="Reason for allocation" />
+                <label className="form-label">Purpose / Notes</label>
+                <input className="form-input" placeholder="Reason for allocation" value={purpose} onChange={e => setPurpose(e.target.value)} />
               </div>
             </div>
             <div className="flex gap-2 mt-4">
@@ -146,48 +194,30 @@ export default function AssetAllocation() {
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="form-label">Asset *</label>
-                <select className="form-select">
-                  <option value="">Select asset…</option>
-                  {allocs.map(a => <option key={a.id}>{a.assetName} ({a.assetId})</option>)}
+                <select className="form-select" value={trfAsset} onChange={e => setTrfAsset(e.target.value)}>
+                  <option value="">Select allocated asset…</option>
+                  {allocs.filter(a => a.status === 'ACTIVE').map(a => <option key={a.id} value={a.asset.id}>{a.asset.name} ({a.asset.assetTag}) - Held by {a.user?.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">Transfer To *</label>
-                <select className="form-select">
+                <select className="form-select" value={trfUser} onChange={e => setTrfUser(e.target.value)}>
                   <option value="">Select employee…</option>
-                  {employees.map(e => <option key={e.id}>{e.name} — {e.department}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} — {e.department?.name}</option>)}
                 </select>
               </div>
-              <div><label className="form-label">Reason</label><input className="form-input" placeholder="Reason for transfer" /></div>
+              <div><label className="form-label">Reason</label><input className="form-input" placeholder="Reason for transfer" value={trfReason} onChange={e => setTrfReason(e.target.value)} /></div>
             </div>
             <div className="flex gap-2 mt-4">
-              <button className="btn-primary">Submit Transfer</button>
+              <button className="btn-primary" onClick={handleSubmitTransfer}>Submit Transfer</button>
               <button className="btn-secondary" onClick={() => setShowTrfForm(false)}>Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Approval Stepper Demo */}
-      <div className="card">
-        <div className="card-header">
-          <span className="text-sm font-semibold">Transfer Approval Progress — TRF-002</span>
-          <div className="flex gap-2">
-            {['All', 'Pending','Approved','In Progress','Resolved'].map(s => (
-              <button key={s} onClick={() => { setStepperStatus(s); setTab(1); }}
-                className={`text-xs px-2 py-1 rounded border ${stepperStatus===s ? 'bg-[#18181b] text-white border-[#18181b]' : 'border-[#d4d4d8] text-[#52525b] hover:bg-[#fafafa]'}`}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="card-body">
-          <ApprovalWorkflowStepper currentStatus={stepperStatus === 'All' ? 'Pending' : stepperStatus} />
-        </div>
-      </div>
-
       {/* Tabs */}
-      <div className="flex border-b border-[#e4e4e7] gap-1">
+      <div className="flex border-b border-[#e4e4e7] gap-1 mt-6">
         {['Active Allocations', 'Transfer Requests'].map((t, i) => (
           <button key={t} className={`tab-btn ${tab === i ? 'active' : ''}`} onClick={() => setTab(i)}>{t}</button>
         ))}
@@ -199,7 +229,7 @@ export default function AssetAllocation() {
             <DataTable
               columns={ALLOC_COLS}
               data={allocs}
-              searchKeys={['assetName', 'assignedTo', 'department']}
+              searchKeys={['asset.name', 'user.name', 'user.department.name']}
             />
           </div>
         </div>
@@ -209,38 +239,47 @@ export default function AssetAllocation() {
         <div className="card">
           <div className="card-header">
             <span className="text-sm font-semibold">Transfer Requests</span>
+            <div className="flex gap-2">
+              {['All', 'REQUESTED','APPROVED','REJECTED'].map(s => (
+                <button key={s} onClick={() => { setStepperStatus(s); }}
+                  className={`text-xs px-2 py-1 rounded border ${stepperStatus===s ? 'bg-[#18181b] text-white border-[#18181b]' : 'border-[#d4d4d8] text-[#52525b] hover:bg-[#fafafa]'}`}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-[#f4f4f5]">
               <thead>
                 <tr>
-                  {['ID','Asset','From','To','To Dept','Requested','Status','Action'].map(h=>(
-                    <th key={h} className="table-th">{h}</th>
+                  {TRF_COLS.map(c => (
+                    <th key={c.key} className="table-th">{c.label}</th>
                   ))}
+                  <th className="table-th">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-[#f4f4f5]">
                 {trfs.filter(r => stepperStatus === 'All' || r.status === stepperStatus).map(r => (
                   <tr key={r.id} className="table-tr">
-                    <td className="table-td">{r.id}</td>
-                    <td className="table-td font-medium">{r.assetName}</td>
-                    <td className="table-td">{r.from}</td>
-                    <td className="table-td">{r.to}</td>
-                    <td className="table-td">{r.toDept}</td>
-                    <td className="table-td">{r.date}</td>
+                    <td className="table-td">{r.id.substring(0,8)}</td>
+                    <td className="table-td font-medium">{r.asset?.name}</td>
+                    <td className="table-td">{r.fromUser?.name}</td>
+                    <td className="table-td">{r.toUser?.name}</td>
+                    <td className="table-td">{r.toHolderDept?.name || '—'}</td>
+                    <td className="table-td">{new Date(r.createdAt).toLocaleDateString()}</td>
                     <td className="table-td"><StatusBadge status={r.status} /></td>
                     <td className="table-td">
-                      {r.status === 'Pending' && (
+                      {r.status === 'REQUESTED' && (
                         <div className="flex gap-1">
                           <button 
                             className="btn-ghost py-1 px-2 text-xs text-emerald-600"
-                            onClick={() => handleUpdateTransfer(r.id, 'Approved')}
+                            onClick={() => handleUpdateTransfer(r.id, 'approve')}
                           >
                             <CheckCircle size={13}/> Approve
                           </button>
                           <button 
                             className="btn-ghost py-1 px-2 text-xs text-red-500"
-                            onClick={() => handleUpdateTransfer(r.id, 'Rejected')}
+                            onClick={() => handleUpdateTransfer(r.id, 'reject')}
                           >
                             <XCircle size={13}/> Reject
                           </button>

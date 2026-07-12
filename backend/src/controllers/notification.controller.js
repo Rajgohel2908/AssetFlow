@@ -13,7 +13,7 @@ export const getNotifications = async (req, res) => {
 
   const where = {
     userId: req.user.userId,
-    ...(unreadOnly === 'true' && { isRead: false }),
+    ...(unreadOnly === 'true' && { read: false }),
   };
 
   const [notifications, total, unreadCount] = await Promise.all([
@@ -24,7 +24,7 @@ export const getNotifications = async (req, res) => {
       take: Number(limit),
     }),
     prisma.notification.count({ where }),
-    prisma.notification.count({ where: { userId: req.user.userId, isRead: false } }),
+    prisma.notification.count({ where: { userId: req.user.userId, read: false } }),
   ]);
 
   res.json({
@@ -48,7 +48,7 @@ export const markNotificationRead = async (req, res) => {
 
   await prisma.notification.update({
     where: { id: req.params.id },
-    data: { isRead: true },
+    data: { read: true },
   });
 
   res.json({ success: true, message: 'Notification marked as read' });
@@ -59,8 +59,8 @@ export const markNotificationRead = async (req, res) => {
  */
 export const markAllNotificationsRead = async (req, res) => {
   const result = await prisma.notification.updateMany({
-    where: { userId: req.user.userId, isRead: false },
-    data: { isRead: true },
+    where: { userId: req.user.userId, read: false },
+    data: { read: true },
   });
 
   res.json({ success: true, message: `${result.count} notification(s) marked as read` });

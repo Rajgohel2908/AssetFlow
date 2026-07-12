@@ -8,6 +8,7 @@ import { activityLogService } from '../services/activityLog.service.js';
 const createSchema = z.object({
   name: z.string().min(2).max(100),
   description: z.string().optional(),
+  headId: z.string().cuid().optional().nullable(),
   parentDepartmentId: z.string().cuid().optional().nullable(),
 });
 
@@ -23,14 +24,26 @@ export const createDepartment = async (req, res) => {
     const parent = await prisma.department.findUnique({ where: { id: data.parentDepartmentId } });
     if (!parent) throw new ApiError(404, 'Parent department not found');
   }
+  if (data.headId) {
+    const head = await prisma.user.findUnique({ where: { id: data.headId } });
+    if (!head) throw new ApiError(404, 'Department head not found');
+  }
 
   const dept = await prisma.department.create({
-    data,
+    data: {
+      name: data.name,
+      parentDepartmentId: data.parentDepartmentId ?? null,
+      headId: data.headId ?? null,
+    },
     include: {
+      head: { select: { id: true, name: true, email: true } },
       parentDepartment: { select: { id: true, name: true } },
       _count: { select: { users: true, assetsHeld: true } },
     },
   });
+  if (data.headId) {
+    await prisma.user.update({ where: { id: data.headId }, data: { role: 'DEPARTMENT_HEAD', departmentId: dept.id } });
+  }
 
   await activityLogService.log(req.user.userId, 'DEPARTMENT_CREATED', 'Department', dept.id, { name: dept.name });
 
@@ -41,6 +54,7 @@ export const getDepartments = async (req, res) => {
   const departments = await prisma.department.findMany({
     include: {
       parentDepartment: { select: { id: true, name: true } },
+      head: { select: { id: true, name: true, email: true } },
       childDepartments: { select: { id: true, name: true } },
       _count: { select: { users: true, assetsHeld: true } },
     },
@@ -54,6 +68,7 @@ export const getDepartment = async (req, res) => {
     where: { id: req.params.id },
     include: {
       parentDepartment: { select: { id: true, name: true } },
+      head: { select: { id: true, name: true, email: true } },
       childDepartments: { select: { id: true, name: true } },
       users: { select: { id: true, name: true, role: true, email: true } },
       _count: { select: { assetsHeld: true } },
@@ -73,15 +88,27 @@ export const updateDepartment = async (req, res) => {
   if (data.parentDepartmentId === req.params.id) {
     throw new ApiError(400, 'A department cannot be its own parent');
   }
+  if (data.headId) {
+    const head = await prisma.user.findUnique({ where: { id: data.headId } });
+    if (!head) throw new ApiError(404, 'Department head not found');
+  }
 
   const dept = await prisma.department.update({
     where: { id: req.params.id },
-    data,
+    data: {
+      ...(data.name && { name: data.name }),
+      ...(data.parentDepartmentId !== undefined && { parentDepartmentId: data.parentDepartmentId }),
+      ...(data.headId !== undefined && { headId: data.headId }),
+    },
     include: {
+      head: { select: { id: true, name: true, email: true } },
       parentDepartment: { select: { id: true, name: true } },
       _count: { select: { users: true, assetsHeld: true } },
     },
   });
+  if (data.headId) {
+    await prisma.user.update({ where: { id: data.headId }, data: { role: 'DEPARTMENT_HEAD', departmentId: dept.id } });
+  }
 
   await activityLogService.log(req.user.userId, 'DEPARTMENT_UPDATED', 'Department', dept.id, {
     before: existing, after: data,

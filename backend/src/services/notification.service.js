@@ -23,11 +23,9 @@ export const notifyService = {
     await prisma.notification.createMany({
       data: uniqueIds.map((userId) => ({
         userId,
-        eventType,
+        type: eventType,
         message,
-        entityType: meta.entityType ?? null,
-        entityId: meta.entityId ?? null,
-        isRead: false,
+        read: false,
       })),
     });
   },
@@ -41,7 +39,7 @@ export const notifyService = {
    */
   async triggerForRole(eventType, message, role, meta = {}) {
     const users = await prisma.user.findMany({
-      where: { role, isActive: true },
+      where: { role, status: 'ACTIVE' },
       select: { id: true },
     });
     const ids = users.map((u) => u.id);

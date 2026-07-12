@@ -11,6 +11,7 @@ import { notifyService } from '../services/notification.service.js';
 const createSchema = z.object({
   name: z.string().min(2).max(200),
   categoryId: z.string().cuid(),
+  holderUserId: z.string().cuid().optional().nullable(),
   holderDepartmentId: z.string().cuid().optional().nullable(),
   location: z.string().optional().nullable(),
   acquisitionDate: z.string().datetime().optional().nullable(),
@@ -72,7 +73,8 @@ export const createAsset = async (req, res) => {
       assetTag,
       name: data.name,
       categoryId: data.categoryId,
-      holderDepartmentId: data.holderDepartmentId ?? null,
+      holderUserId: null,
+      holderDepartmentId: null,
       location: data.location ?? null,
       acquisitionDate: data.acquisitionDate ? new Date(data.acquisitionDate) : null,
       acquisitionCost: data.acquisitionCost ?? null,
@@ -141,13 +143,22 @@ export const getAsset = async (req, res) => {
     where: { id: req.params.id },
     include: {
       category: true,
-      department: true,
-      location: true,
+      holderUser: { select: { id: true, name: true, email: true } },
+      holderDepartment: { select: { id: true, name: true } },
       allocations: {
         where: { status: { in: ['ACTIVE', 'OVERDUE'] } },
-        include: { user: { select: { id: true, name: true, email: true } } },
+        include: {
+          holderUser: { select: { id: true, name: true, email: true, department: { select: { name: true } } } },
+          holderDepartment: { select: { id: true, name: true } },
+        },
         take: 1,
         orderBy: { createdAt: 'desc' },
+      },
+      bookings: {
+        where: { status: { in: ['UPCOMING', 'ONGOING'] } },
+        include: { bookedBy: { select: { id: true, name: true } } },
+        orderBy: { startTime: 'asc' },
+        take: 10,
       },
     },
   });
@@ -167,16 +178,17 @@ export const getAssetHistory = async (req, res) => {
     prisma.allocation.findMany({
       where: { assetId: req.params.id },
       include: {
-        user: { select: { id: true, name: true, email: true } },
-        allocatedBy: { select: { id: true, name: true } },
+        holderUser: { select: { id: true, name: true, email: true } },
+        holderDepartment: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.maintenanceRequest.findMany({
       where: { assetId: req.params.id },
       include: {
-        requestedBy: { select: { id: true, name: true } },
+        raisedBy: { select: { id: true, name: true } },
         technician: { select: { id: true, name: true } },
+        approvedBy: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -240,7 +252,6 @@ export const updateAsset = async (req, res) => {
     data: {
       ...(data.name && { name: data.name }),
       ...(data.categoryId && { categoryId: data.categoryId }),
-      ...(data.holderDepartmentId !== undefined && { holderDepartmentId: data.holderDepartmentId }),
       ...(data.location !== undefined && { location: data.location }),
       ...(data.acquisitionDate !== undefined && { acquisitionDate: data.acquisitionDate ? new Date(data.acquisitionDate) : null }),
       ...(data.acquisitionCost !== undefined && { acquisitionCost: data.acquisitionCost }),
@@ -268,7 +279,7 @@ export const deleteAsset = async (req, res) => {
       _count: {
         select: {
           allocations: { where: { status: { in: ['ACTIVE', 'OVERDUE'] } } },
-          maintenanceRequests: { where: { status: { in: ['PENDING', 'APPROVED', 'IN_PROGRESS'] } } },
+          maintenanceRequests: { where: { status: { in: ['PENDING', 'APPROVED', 'TECHNICIAN_ASSIGNED', 'IN_PROGRESS'] } } },
         },
       },
     },

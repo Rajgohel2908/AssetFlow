@@ -74,6 +74,7 @@ enum AuditCycleStatus {
 }
 
 enum AuditItemResult {
+  PENDING
   VERIFIED
   MISSING
   DAMAGED
@@ -312,11 +313,14 @@ model MaintenanceRequest {
 /// audit_cycles — PRD 3 §3
 model AuditCycle {
   id             String           @id @default(cuid())
+  name           String           @default("Audit Cycle")
   departmentId   String?
   location       String?
   dateRangeStart DateTime
   dateRangeEnd   DateTime
   status         AuditCycleStatus @default(OPEN)
+  closedAt       DateTime?
+  discrepancyReport Json?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 

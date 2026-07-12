@@ -28,7 +28,7 @@ export const getActivityLogs = async (req, res) => {
     ...(query.action && { action: { contains: query.action, mode: 'insensitive' } }),
     ...(query.startDate || query.endDate
       ? {
-          createdAt: {
+          timestamp: {
             ...(query.startDate && { gte: new Date(query.startDate) }),
             ...(query.endDate && { lte: new Date(query.endDate) }),
           },
@@ -40,7 +40,7 @@ export const getActivityLogs = async (req, res) => {
     prisma.activityLog.findMany({
       where,
       include: { actor: { select: { id: true, name: true, role: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { timestamp: 'desc' },
       skip,
       take: query.limit,
     }),

@@ -59,11 +59,11 @@ export const authenticateWithUser = async (req, res, next) => {
         email: true,
         role: true,
         departmentId: true,
-        isActive: true,
+        status: true,
       },
     });
 
-    if (!user || !user.isActive) {
+    if (!user || user.status !== 'ACTIVE') {
       return next(new ApiError(401, 'User account is inactive or not found'));
     }
 

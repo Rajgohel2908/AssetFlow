@@ -92,10 +92,6 @@ export default function AssetDirectory() {
         toast.success('Asset successfully updated!');
       } else {
         const res = await api.post('/assets', payload);
-        if (newStatus !== 'AVAILABLE') {
-          await api.patch(`/assets/${res.data.data.id}/status`, { status: newStatus, reason: 'Initial status setup' });
-          res.data.data.status = newStatus;
-        }
         setAssetsList([res.data.data, ...assetsList]);
         toast.success('Asset successfully registered!');
       }
@@ -367,8 +363,8 @@ export default function AssetDirectory() {
                 className="btn-primary !bg-red-600 hover:!bg-red-700 border-transparent shadow-sm" 
                 onClick={async () => {
                   try {
-                    await api.patch(`/assets/${disposeAsset.id}/status`, { status: 'Disposed', reason: 'Disposed via UI' });
-                    setAssetsList(prev => prev.map(a => a.id === disposeAsset.id ? { ...a, status: 'Disposed' } : a));
+                    await api.patch(`/assets/${disposeAsset.id}/status`, { status: 'DISPOSED', reason: 'Disposed via UI' });
+                    setAssetsList(prev => prev.map(a => a.id === disposeAsset.id ? { ...a, status: 'DISPOSED' } : a));
                   } catch (err) { toast.error('Error disposing asset'); }
                   setDisposeAsset(null);
                   setSelected(null);
