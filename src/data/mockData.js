@@ -17,13 +17,22 @@ export const ASSET_STATUS = {
 };
 
 export const departments = [
-  'Engineering', 'Product & Design', 'Human Resources', 
-  'Finance & Legal', 'IT & Security', 'Sales & Marketing'
+  { id: 1, name: 'Engineering', head: 'Alice Johnson', employeeCount: 42, budget: 250000 },
+  { id: 2, name: 'Product & Design', head: 'Priya Sharma', employeeCount: 28, budget: 180000 },
+  { id: 3, name: 'Human Resources', head: 'Carol Smith', employeeCount: 15, budget: 120000 },
+  { id: 4, name: 'Finance & Legal', head: 'David Brown', employeeCount: 10, budget: 80000 },
+  { id: 5, name: 'IT & Security', head: 'Rahul Verma', employeeCount: 18, budget: 140000 },
+  { id: 6, name: 'Sales & Marketing', head: 'Vikram Singh', employeeCount: 12, budget: 200000 }
 ];
 
 export const categories = [
-  'Laptops', 'Monitors', 'Servers', 'Network Equipment', 
-  'Office Furniture', 'Mobile Devices', 'Software Licenses'
+  { id: 1, name: 'Laptops', description: 'All laptops' },
+  { id: 2, name: 'Monitors', description: 'Desktop monitors' },
+  { id: 3, name: 'Servers', description: 'Data center servers' },
+  { id: 4, name: 'Network Equipment', description: 'Routers, switches, APs' },
+  { id: 5, name: 'Office Furniture', description: 'Desks, chairs, etc.' },
+  { id: 6, name: 'Mobile Devices', description: 'Phones and tablets' },
+  { id: 7, name: 'Software Licenses', description: 'Enterprise software' }
 ];
 
 export const employees = [
