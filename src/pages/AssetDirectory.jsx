@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X, ChevronRight } from 'lucide-react';
 import DataTable from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
@@ -17,7 +17,14 @@ const COLUMNS = [
 ];
 
 export default function AssetDirectory() {
-  const [assetsList, setAssetsList] = useState(assets);
+  const [assetsList, setAssetsList] = useState(() => {
+    const saved = localStorage.getItem('assets');
+    return saved ? JSON.parse(saved) : assets;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('assets', JSON.stringify(assetsList));
+  }, [assetsList]);
   const [showForm,  setShowForm]  = useState(false);
   const [selected, setSelected]  = useState(null); // asset for drawer
   const [drawerTab, setDrawerTab] = useState('details');
