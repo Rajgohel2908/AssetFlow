@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -43,7 +43,7 @@ export default function DataTable({ columns, data, searchKeys = [], pageSize = P
     <div>
       {searchKeys.length > 0 && (
         <div className="mb-3 relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a1a1aa]" />
           <input
             className="form-input !pl-9 w-full max-w-xs"
             placeholder="Search…"
@@ -53,8 +53,8 @@ export default function DataTable({ columns, data, searchKeys = [], pageSize = P
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-100">
+      <div className="overflow-x-auto rounded-xl border border-[#e4e4e7]">
+        <table className="min-w-full divide-y divide-[#f4f4f5]">
           <thead>
             <tr>
               {columns.map(col => (
@@ -73,10 +73,10 @@ export default function DataTable({ columns, data, searchKeys = [], pageSize = P
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
+          <tbody className="bg-white divide-y divide-[#f4f4f5]">
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="table-td text-center text-gray-400 py-10">
+                <td colSpan={columns.length} className="table-td text-center text-[#a1a1aa] py-10">
                   No records found.
                 </td>
               </tr>
@@ -94,7 +94,7 @@ export default function DataTable({ columns, data, searchKeys = [], pageSize = P
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between mt-3 text-sm text-gray-500">
+      <div className="flex items-center justify-between mt-3 text-sm text-[#71717a]">
         <span>{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
         <div className="flex items-center gap-1">
           <button

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Layers, AlertTriangle, ArrowRightLeft, X } from 'lucide-react';
 import { allocations } from '../data/mockData';
 import StatusBadge from '../components/common/StatusBadge';
@@ -46,8 +46,8 @@ export default function MyAllocations() {
 
       {myAllocs.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-16">
-          <Layers size={32} className="text-gray-300 mb-3" />
-          <p className="text-sm text-gray-400">No assets currently allocated to you.</p>
+          <Layers size={32} className="text-[#d4d4d8] mb-3" />
+          <p className="text-sm text-[#a1a1aa]">No assets currently allocated to you.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -55,8 +55,8 @@ export default function MyAllocations() {
             <div key={a.id} className="card p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{a.assetName}</p>
-                  <p className="text-xs text-gray-400">{a.assetId} · {a.id}</p>
+                  <p className="text-sm font-semibold text-[#111111]">{a.assetName}</p>
+                  <p className="text-xs text-[#a1a1aa]">{a.assetId} · {a.id}</p>
                 </div>
                 <StatusBadge status={a.status} />
               </div>
@@ -67,8 +67,8 @@ export default function MyAllocations() {
                   ['Due Return',   a.dueReturn ?? 'Indefinite'],
                 ].map(([label, val]) => (
                   <div key={label} className="flex justify-between text-xs">
-                    <span className="text-gray-400">{label}</span>
-                    <span className="text-gray-700 font-medium">{val}</span>
+                    <span className="text-[#a1a1aa]">{label}</span>
+                    <span className="text-[#3f3f46] font-medium">{val}</span>
                   </div>
                 ))}
               </div>
@@ -81,7 +81,7 @@ export default function MyAllocations() {
                   Request Return
                 </button>
                 <button 
-                  className="btn-ghost text-xs text-primary-600"
+                  className="btn-ghost text-xs text-[#18181b]"
                   onClick={() => handleTransfer(a.id)}
                   disabled={a.status !== 'Active'}
                 >
@@ -102,9 +102,9 @@ export default function MyAllocations() {
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mb-2">
                 <AlertTriangle className="text-amber-600" size={20} />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Request Asset Return</h3>
-              <p className="text-sm text-gray-600">
-                Are you sure you want to request a return for <span className="font-semibold text-gray-800">{returnAsset.assetName}</span>? This will notify the IT department to process your return.
+              <h3 className="text-lg font-bold text-[#111111]">Request Asset Return</h3>
+              <p className="text-sm text-[#52525b]">
+                Are you sure you want to request a return for <span className="font-semibold text-[#18181b]">{returnAsset.assetName}</span>? This will notify the IT department to process your return.
               </p>
             </div>
             <div className="flex justify-end gap-3 mt-4">
@@ -132,19 +132,19 @@ export default function MyAllocations() {
           <div className="relative bg-white rounded-xl shadow-2xl p-6 w-[400px] flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mb-2">
-                  <ArrowRightLeft className="text-primary-600" size={20} />
+                <div className="w-10 h-10 rounded-full bg-[#f4f4f5] flex items-center justify-center mb-2">
+                  <ArrowRightLeft className="text-[#18181b]" size={20} />
                 </div>
-                <button onClick={() => setTransferAsset(null)} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => setTransferAsset(null)} className="text-[#a1a1aa] hover:text-[#52525b]">
                   <X size={18} />
                 </button>
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Transfer Asset</h3>
-              <p className="text-sm text-gray-600 mb-2">
-                Transfer <span className="font-semibold text-gray-800">{transferAsset.assetName}</span> to another employee. This request will require manager approval.
+              <h3 className="text-lg font-bold text-[#111111]">Transfer Asset</h3>
+              <p className="text-sm text-[#52525b] mb-2">
+                Transfer <span className="font-semibold text-[#18181b]">{transferAsset.assetName}</span> to another employee. This request will require manager approval.
               </p>
               <div>
-                <label className="form-label text-xs font-semibold text-gray-700">Recipient Name</label>
+                <label className="form-label text-xs font-semibold text-[#3f3f46]">Recipient Name</label>
                 <input 
                   className="form-input mt-1 w-full" 
                   placeholder="e.g. Rahul Verma" 

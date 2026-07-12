@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Plus, X, CheckCircle, XCircle } from 'lucide-react';
 import DataTable from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
@@ -175,7 +175,7 @@ export default function AssetAllocation() {
           <div className="flex gap-2">
             {['All', 'Pending','Approved','In Progress','Resolved'].map(s => (
               <button key={s} onClick={() => { setStepperStatus(s); setTab(1); }}
-                className={`text-xs px-2 py-1 rounded border ${stepperStatus===s ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                className={`text-xs px-2 py-1 rounded border ${stepperStatus===s ? 'bg-[#18181b] text-white border-[#18181b]' : 'border-[#d4d4d8] text-[#52525b] hover:bg-[#fafafa]'}`}>
                 {s}
               </button>
             ))}
@@ -187,7 +187,7 @@ export default function AssetAllocation() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 gap-1">
+      <div className="flex border-b border-[#e4e4e7] gap-1">
         {['Active Allocations', 'Transfer Requests'].map((t, i) => (
           <button key={t} className={`tab-btn ${tab === i ? 'active' : ''}`} onClick={() => setTab(i)}>{t}</button>
         ))}
@@ -211,7 +211,7 @@ export default function AssetAllocation() {
             <span className="text-sm font-semibold">Transfer Requests</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100">
+            <table className="min-w-full divide-y divide-[#f4f4f5]">
               <thead>
                 <tr>
                   {['ID','Asset','From','To','To Dept','Requested','Status','Action'].map(h=>(
@@ -219,7 +219,7 @@ export default function AssetAllocation() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+              <tbody className="bg-white divide-y divide-[#f4f4f5]">
                 {trfs.filter(r => stepperStatus === 'All' || r.status === stepperStatus).map(r => (
                   <tr key={r.id} className="table-tr">
                     <td className="table-td">{r.id}</td>
@@ -251,7 +251,7 @@ export default function AssetAllocation() {
                 ))}
                 {trfs.filter(r => stepperStatus === 'All' || r.status === stepperStatus).length === 0 && (
                   <tr>
-                    <td colSpan="8" className="text-center py-8 text-sm text-gray-500">
+                    <td colSpan="8" className="text-center py-8 text-sm text-[#71717a]">
                       No transfer requests found for status: {stepperStatus}
                     </td>
                   </tr>

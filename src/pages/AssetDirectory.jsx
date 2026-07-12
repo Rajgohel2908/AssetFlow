@@ -107,7 +107,7 @@ export default function AssetDirectory() {
       render: (_, row) => (
         <button
           type="button"
-          className="btn-ghost py-1 px-2 text-xs text-primary-600 flex items-center gap-1"
+          className="btn-ghost py-1 px-2 text-xs text-[#52525b] flex items-center gap-1"
           onClick={(e) => { 
             e.preventDefault();
             e.stopPropagation();
@@ -209,7 +209,7 @@ export default function AssetDirectory() {
         </select>
         {(statusFilter || catFilter) && (
           <button
-            className="btn-ghost text-xs text-gray-500"
+            className="btn-ghost text-xs text-[#71717a]"
             onClick={() => { setStatusFilter(''); setCatFilter(''); }}
           >
             Clear filters
@@ -234,22 +234,22 @@ export default function AssetDirectory() {
           <div className="fixed inset-0 bg-black/40 z-[9998]" onClick={() => setSelected(null)} />
           <div className="fixed right-0 top-0 h-full w-[480px] bg-white shadow-2xl z-[9999] flex flex-col transform transition-transform">
             {/* Drawer header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#f4f4f5]">
               <div>
-                <h3 className="text-base font-semibold text-gray-900">{selected.name}</h3>
-                <p className="text-xs text-gray-400">{selected.id}</p>
+                <h3 className="text-base font-semibold text-[#111111]">{selected.name}</h3>
+                <p className="text-xs text-[#a1a1aa]">{selected.id}</p>
               </div>
               <button onClick={() => setSelected(null)} className="btn-ghost py-1 px-2"><X size={16} /></button>
             </div>
 
             {/* Status + badge */}
-            <div className="px-6 py-3 border-b border-gray-100 flex items-center gap-3">
+            <div className="px-6 py-3 border-b border-[#f4f4f5] flex items-center gap-3">
               <StatusBadge status={selected.status} />
-              <span className="text-xs text-gray-400">{selected.category} · {selected.location}</span>
+              <span className="text-xs text-[#a1a1aa]">{selected.category} · {selected.location}</span>
             </div>
 
             {/* Drawer tabs */}
-            <div className="flex border-b border-gray-100 px-6 gap-1">
+            <div className="flex border-b border-[#f4f4f5] px-6 gap-1">
               {['details', 'history'].map(t => (
                 <button
                   key={t}
@@ -275,26 +275,26 @@ export default function AssetDirectory() {
                     ['Purchase Date', selected.purchaseDate],
                     ['Value',         selected.value ? `₹${Number(selected.value).toLocaleString()}` : '—'],
                   ].map(([label, val]) => (
-                    <div key={label} className="flex justify-between py-2 border-b border-gray-50">
-                      <span className="text-xs text-gray-500">{label}</span>
-                      <span className="text-xs font-medium text-gray-800">{val}</span>
+                    <div key={label} className="flex justify-between py-2 border-b border-[#f4f4f5]">
+                      <span className="text-xs text-[#71717a]">{label}</span>
+                      <span className="text-xs font-medium text-[#18181b]">{val}</span>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="space-y-3">
                   {history.length === 0 ? (
-                    <p className="text-sm text-gray-400">No history available.</p>
+                    <p className="text-sm text-[#a1a1aa]">No history available.</p>
                   ) : history.map((h, i) => (
                     <div key={i} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5 flex-shrink-0" />
-                        {i < history.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 my-1" />}
+                        <div className="w-2 h-2 rounded-full bg-[#18181b] mt-1.5 flex-shrink-0" />
+                        {i < history.length - 1 && <div className="w-0.5 flex-1 bg-[#e4e4e7] my-1" />}
                       </div>
                       <div className="pb-3">
-                        <p className="text-xs font-semibold text-gray-800">{h.action}</p>
-                        <p className="text-xs text-gray-500">{h.note}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{h.date} · {h.user}</p>
+                        <p className="text-xs font-semibold text-[#18181b]">{h.action}</p>
+                        <p className="text-xs text-[#71717a]">{h.note}</p>
+                        <p className="text-[10px] text-[#a1a1aa] mt-0.5">{h.date} · {h.user}</p>
                       </div>
                     </div>
                   ))}
@@ -302,9 +302,9 @@ export default function AssetDirectory() {
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-2">
+            <div className="px-6 py-4 border-t border-[#f4f4f5] flex gap-2">
               <button onClick={handleEditClick} className="btn-primary text-xs flex-1">Edit Asset</button>
-              <button onClick={handleDisposeClick} className="btn-secondary text-xs text-red-600 border-red-200 hover:bg-red-50">Dispose</button>
+              <button onClick={handleDisposeClick} className="btn-secondary text-xs text-[#991b1b] border-[#fecaca] hover:bg-[#fef2f2]">Dispose</button>
             </div>
           </div>
         </div>
@@ -314,14 +314,14 @@ export default function AssetDirectory() {
       {disposeAsset && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDisposeAsset(null)} />
-          <div className="relative bg-white rounded-xl shadow-2xl p-6 w-[400px] flex flex-col gap-4">
+          <div className="relative bg-white rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.1)] p-6 w-[400px] flex flex-col gap-4 border border-[#e4e4e7]">
             <div className="flex flex-col gap-2">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mb-2">
-                <X className="text-red-600" size={20} />
+              <div className="w-10 h-10 rounded-full bg-[#fef2f2] flex items-center justify-center mb-2">
+                <X className="text-[#991b1b]" size={20} />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Dispose Asset</h3>
-              <p className="text-sm text-gray-600">
-                Are you sure you want to mark <span className="font-semibold text-gray-800">{disposeAsset.name}</span> as Disposed? This action will permanently update the asset's status.
+              <h3 className="text-lg font-semibold text-[#111111]">Dispose Asset</h3>
+              <p className="text-sm text-[#71717a]">
+                Are you sure you want to mark <span className="font-semibold text-[#18181b]">{disposeAsset.name}</span> as Disposed? This action will permanently update the asset's status.
               </p>
             </div>
             <div className="flex justify-end gap-3 mt-4">

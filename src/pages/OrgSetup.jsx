@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Plus, Pencil, Trash2, UserCog } from 'lucide-react';
 import { departments, categories, employees, ROLES } from '../data/mockData';
 import StatusBadge from '../components/common/StatusBadge';
@@ -126,7 +126,7 @@ export default function OrgSetup() {
         <div className="flex gap-1">
           <button
             title="Promote / Change Role"
-            className="btn-ghost py-1 px-2 text-xs text-primary-600"
+            className="btn-ghost py-1 px-2 text-xs text-[#18181b]"
             onClick={() => handlePromote(row.id)}
           >
             <UserCog size={13} /> Promote
@@ -146,7 +146,7 @@ export default function OrgSetup() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 gap-1">
+      <div className="flex border-b border-[#e4e4e7] gap-1">
         {TABS.map((t, i) => (
           <button
             key={t}
@@ -168,7 +168,7 @@ export default function OrgSetup() {
             </button>
           </div>
           {showDeptForm && (
-            <form onSubmit={handleAddDept} className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+            <form onSubmit={handleAddDept} className="border-b border-[#f4f4f5] px-6 py-4 bg-[#fafafa]">
               <div className="grid grid-cols-3 gap-3">
                 <div><label className="form-label">Name</label><input required className="form-input" placeholder="Department name" value={deptName} onChange={e => setDeptName(e.target.value)} /></div>
                 <div><label className="form-label">Head</label><input className="form-input" placeholder="Head name" value={deptHead} onChange={e => setDeptHead(e.target.value)} /></div>
@@ -195,7 +195,7 @@ export default function OrgSetup() {
             </button>
           </div>
           {showCatForm && (
-            <form onSubmit={handleAddCat} className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+            <form onSubmit={handleAddCat} className="border-b border-[#f4f4f5] px-6 py-4 bg-[#fafafa]">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="form-label">Category Name</label><input required className="form-input" placeholder="e.g. Networking Gear" value={catName} onChange={e => setCatName(e.target.value)} /></div>
                 <div><label className="form-label">Description</label><input className="form-input" placeholder="Short description" value={catDesc} onChange={e => setCatDesc(e.target.value)} /></div>
@@ -219,7 +219,7 @@ export default function OrgSetup() {
             <button onClick={() => setShowEmpForm(s => !s)} className="btn-primary text-xs"><Plus size={13} /> Add Employee</button>
           </div>
           {showEmpForm && (
-            <form onSubmit={handleAddEmp} className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+            <form onSubmit={handleAddEmp} className="border-b border-[#f4f4f5] px-6 py-4 bg-[#fafafa]">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <div><label className="form-label">Name</label><input required className="form-input" placeholder="Employee Name" value={empName} onChange={e => setEmpName(e.target.value)} /></div>
                 <div><label className="form-label">Email</label><input required type="email" className="form-input" placeholder="Email" value={empEmail} onChange={e => setEmpEmail(e.target.value)} /></div>

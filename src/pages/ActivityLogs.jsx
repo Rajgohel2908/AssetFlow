@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { activityLogs } from '../data/mockData';
 import DataTable from '../components/common/DataTable';
 import { Download } from 'lucide-react';
@@ -11,9 +11,9 @@ const MODULE_COLORS = {
   'Maintenance': 'bg-amber-100 text-amber-700',
   'Booking':     'bg-emerald-100 text-emerald-700',
   'Audit':       'bg-orange-100 text-orange-700',
-  'Reports':     'bg-gray-100 text-gray-700',
+  'Reports':     'bg-[#f4f4f5] text-[#3f3f46]',
   'Org Setup':   'bg-indigo-100 text-indigo-700',
-  'Assets':      'bg-primary-100 text-primary-700',
+  'Assets':      'bg-[#f4f4f5] text-[#18181b]',
 };
 
 export default function ActivityLogs() {
@@ -32,18 +32,18 @@ export default function ActivityLogs() {
     {
       key: 'timestamp', label: 'Timestamp',
       render: v => (
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[#71717a]">
           {new Date(v).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
         </span>
       )
     },
     { key: 'user',   label: 'User' },
-    { key: 'action', label: 'Action', render: v => <span className="font-medium text-gray-800">{v}</span> },
-    { key: 'details', label: 'Details', render: v => <span className="text-gray-500">{v}</span> },
+    { key: 'action', label: 'Action', render: v => <span className="font-medium text-[#18181b]">{v}</span> },
+    { key: 'details', label: 'Details', render: v => <span className="text-[#71717a]">{v}</span> },
     {
       key: 'module', label: 'Module', sortable: false,
       render: v => (
-        <span className={`badge ${MODULE_COLORS[v] ?? 'bg-gray-100 text-gray-600'}`}>{v}</span>
+        <span className={`badge ${MODULE_COLORS[v] ?? 'bg-[#f4f4f5] text-[#52525b]'}`}>{v}</span>
       )
     },
   ];

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import StatusBadge from '../components/common/StatusBadge';
 import ConflictModal from '../components/common/ConflictModal';
@@ -118,7 +118,7 @@ export default function ResourceBooking() {
       )}
 
       {/* Tab toggle */}
-      <div className="flex border-b border-gray-200 gap-1">
+      <div className="flex border-b border-[#e4e4e7] gap-1">
         {['Calendar View', 'Booking List'].map((t, i) => (
           <button key={t} className={`tab-btn ${tab === i ? 'active' : ''}`} onClick={() => setTab(i)}>{t}</button>
         ))}
@@ -148,10 +148,10 @@ export default function ResourceBooking() {
           <div className="overflow-x-auto">
             <div className="min-w-[700px]">
               {/* Header row */}
-              <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: '160px repeat(5, 1fr)' }}>
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50">Resource</div>
+              <div className="grid border-b border-[#f4f4f5]" style={{ gridTemplateColumns: '160px repeat(5, 1fr)' }}>
+                <div className="px-3 py-2 text-xs font-semibold text-[#71717a] bg-[#fafafa]">Resource</div>
                 {weekDays.map(d => (
-                  <div key={d} className="px-3 py-2 text-xs font-semibold text-gray-600 bg-gray-50 border-l border-gray-100 text-center">
+                  <div key={d} className="px-3 py-2 text-xs font-semibold text-[#52525b] bg-[#fafafa] border-l border-[#f4f4f5] text-center">
                     {format(d, 'EEE d')}
                   </div>
                 ))}
@@ -161,18 +161,18 @@ export default function ResourceBooking() {
               {resources.map(res => (
                 <div
                   key={res.id}
-                  className="grid border-b border-gray-100 hover:bg-gray-50/50"
+                  className="grid border-b border-[#f4f4f5] hover:bg-[#fafafa]/50"
                   style={{ gridTemplateColumns: '160px repeat(5, 1fr)' }}
                 >
-                  <div className="px-3 py-3 border-r border-gray-100">
-                    <p className="text-xs font-semibold text-gray-800">{res.name}</p>
-                    <p className="text-[10px] text-gray-400">{res.type} · Cap: {res.capacity}</p>
+                  <div className="px-3 py-3 border-r border-[#f4f4f5]">
+                    <p className="text-xs font-semibold text-[#18181b]">{res.name}</p>
+                    <p className="text-[10px] text-[#a1a1aa]">{res.type} · Cap: {res.capacity}</p>
                   </div>
                   {weekDays.map(d => {
                     const key = `${res.name}|${format(d, 'yyyy-MM-dd')}`;
                     const dayBookings = bookingMap[key] ?? [];
                     return (
-                      <div key={d.toISOString()} className="px-2 py-1.5 border-l border-gray-100 min-h-[60px]">
+                      <div key={d.toISOString()} className="px-2 py-1.5 border-l border-[#f4f4f5] min-h-[60px]">
                         {dayBookings.map(b => (
                           <div
                             key={b.id}
@@ -196,7 +196,7 @@ export default function ResourceBooking() {
       {tab === 1 && (
         <div className="card">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100">
+            <table className="min-w-full divide-y divide-[#f4f4f5]">
               <thead>
                 <tr>
                   {['ID','Resource','Booked By','Date','Time','Purpose','Status'].map(h => (
@@ -204,7 +204,7 @@ export default function ResourceBooking() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+              <tbody className="bg-white divide-y divide-[#f4f4f5]">
                 {bookingsList.map(b => (
                   <tr key={b.id} className="table-tr">
                     <td className="table-td">{b.id}</td>

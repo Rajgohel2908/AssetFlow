@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Plus, X, Check, AlertTriangle, HelpCircle } from 'lucide-react';
 import StatusBadge from '../components/common/StatusBadge';
 import { auditCycles, assets } from '../data/mockData';
@@ -132,17 +132,17 @@ export default function AssetAudit() {
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{cycle.name}</p>
-                    <p className="text-xs text-gray-400">{cycle.id} · {cycle.startDate} → {cycle.endDate}</p>
+                    <p className="text-sm font-semibold text-[#111111]">{cycle.name}</p>
+                    <p className="text-xs text-[#a1a1aa]">{cycle.id} · {cycle.startDate} → {cycle.endDate}</p>
                   </div>
                   <StatusBadge status={cycle.status} />
                 </div>
                 <div className="mt-2">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <div className="flex justify-between text-xs text-[#71717a] mb-1">
                     <span>{verified}/{total} verified</span>
                     <span>{pct}%</span>
                   </div>
-                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[#e4e4e7] rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -159,7 +159,7 @@ export default function AssetAudit() {
                 <div className="card-header">
                   <div>
                     <h3 className="text-sm font-semibold">{selected.name} — Checklist</h3>
-                    <p className="text-xs text-gray-400">Mark each asset as Verified, Missing, or Damaged</p>
+                    <p className="text-xs text-[#a1a1aa]">Mark each asset as Verified, Missing, or Damaged</p>
                   </div>
                   {selected.status === 'Open' && (
                     <button 
@@ -171,7 +171,7 @@ export default function AssetAudit() {
                   )}
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-100">
+                  <table className="min-w-full divide-y divide-[#f4f4f5]">
                     <thead>
                       <tr>
                         {['Asset ID','Asset Name','Status','Note','Action'].map(h => (
@@ -179,7 +179,7 @@ export default function AssetAudit() {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
+                    <tbody className="bg-white divide-y divide-[#f4f4f5]">
                       {selected.checklist.map(item => (
                         <tr key={item.assetId} className="table-tr">
                           <td className="table-td">{item.assetId}</td>
@@ -190,14 +190,14 @@ export default function AssetAudit() {
                               <StatusBadge status={item.status} />
                             </div>
                           </td>
-                          <td className="table-td text-gray-400">{item.note || '—'}</td>
+                          <td className="table-td text-[#a1a1aa]">{item.note || '—'}</td>
                           <td className="table-td">
                             <div className="flex gap-1">
                               {CHECKLIST_STATUS.filter(s => s !== item.status).map(s => (
                                 <button
                                   key={s}
                                   onClick={() => updateChecklistItem(selected.id, item.assetId, s)}
-                                  className="text-[10px] px-2 py-0.5 rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                  className="text-[10px] px-2 py-0.5 rounded border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa]"
                                 >
                                   {s}
                                 </button>
@@ -223,11 +223,11 @@ export default function AssetAudit() {
                   </div>
                   <div className="card-body space-y-2">
                     {discrepancies.map(d => (
-                      <div key={d.assetId} className="flex items-center gap-3 p-2 rounded-lg bg-orange-50 border border-orange-100">
+                      <div key={d.assetId} className="flex items-center gap-3 p-2 rounded-xl bg-orange-50 border border-orange-100">
                         <span className="flex-shrink-0">{STATUS_ICONS[d.status]}</span>
                         <div>
-                          <p className="text-xs font-semibold text-gray-800">{d.assetName} ({d.assetId})</p>
-                          <p className="text-[11px] text-gray-500">{d.note || `Status: ${d.status}`}</p>
+                          <p className="text-xs font-semibold text-[#18181b]">{d.assetName} ({d.assetId})</p>
+                          <p className="text-[11px] text-[#71717a]">{d.note || `Status: ${d.status}`}</p>
                         </div>
                         <StatusBadge status={d.status} className="ml-auto" />
                       </div>
@@ -238,8 +238,8 @@ export default function AssetAudit() {
             </>
           ) : (
             <div className="card flex flex-col items-center justify-center py-16 text-center">
-              <HelpCircle size={32} className="text-gray-300 mb-3" />
-              <p className="text-sm text-gray-400">Select an audit cycle to view its checklist</p>
+              <HelpCircle size={32} className="text-[#d4d4d8] mb-3" />
+              <p className="text-sm text-[#a1a1aa]">Select an audit cycle to view its checklist</p>
             </div>
           )}
         </div>

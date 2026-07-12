@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react';
+﻿import { Download } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -27,7 +27,7 @@ export default function Reports() {
           <div className="card-header">
             <div>
               <h3 className="text-sm font-semibold">Asset Utilization Trend</h3>
-              <p className="text-xs text-gray-400">% of assets allocated per month</p>
+              <p className="text-xs text-[#a1a1aa]">% of assets allocated per month</p>
             </div>
             <button className="btn-ghost text-xs"><Download size={13} /> CSV</button>
           </div>
@@ -49,7 +49,7 @@ export default function Reports() {
           <div className="card-header">
             <div>
               <h3 className="text-sm font-semibold">Maintenance Frequency by Category</h3>
-              <p className="text-xs text-gray-400">Number of maintenance requests per category</p>
+              <p className="text-xs text-[#a1a1aa]">Number of maintenance requests per category</p>
             </div>
             <button className="btn-ghost text-xs"><Download size={13} /> CSV</button>
           </div>
@@ -74,7 +74,7 @@ export default function Reports() {
           <div className="card-header">
             <div>
               <h3 className="text-sm font-semibold">Department Allocation Summary</h3>
-              <p className="text-xs text-gray-400">Allocated vs Available assets per department</p>
+              <p className="text-xs text-[#a1a1aa]">Allocated vs Available assets per department</p>
             </div>
             <button className="btn-ghost text-xs"><Download size={13} /> CSV</button>
           </div>
@@ -98,7 +98,7 @@ export default function Reports() {
           <div className="card-header">
             <div>
               <h3 className="text-sm font-semibold">Asset Status Distribution</h3>
-              <p className="text-xs text-gray-400">Current fleet status breakdown</p>
+              <p className="text-xs text-[#a1a1aa]">Current fleet status breakdown</p>
             </div>
           </div>
           <div className="card-body flex flex-col items-center">
@@ -141,9 +141,9 @@ export default function Reports() {
           { label: 'Top Maintenance Cat.',   value: 'Laptops', desc: '12 requests' },
         ].map(s => (
           <div key={s.label} className="card p-4">
-            <p className="text-xs text-gray-500 mb-1">{s.label}</p>
-            <p className="text-xl font-bold text-gray-900">{s.value}</p>
-            <p className="text-xs text-gray-400">{s.desc}</p>
+            <p className="text-xs text-[#71717a] mb-1">{s.label}</p>
+            <p className="text-xl font-bold text-[#111111]">{s.value}</p>
+            <p className="text-xs text-[#a1a1aa]">{s.desc}</p>
           </div>
         ))}
       </div>
