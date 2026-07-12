@@ -27,4 +27,13 @@ export const ensureAssetTagSequence = async () => {
   await prisma.$executeRawUnsafe(
     `CREATE SEQUENCE IF NOT EXISTS asset_tag_seq START 1 INCREMENT 1 MINVALUE 1 NO MAXVALUE CACHE 1;`
   );
+  
+  // Update sequence to the maximum existing asset tag to avoid unique constraint failures
+  try {
+    await prisma.$executeRawUnsafe(
+      `SELECT setval('asset_tag_seq', COALESCE((SELECT MAX(CAST(SUBSTRING("assetTag" FROM 4) AS INTEGER)) FROM "Asset" WHERE "assetTag" LIKE 'AF-%'), 0) + 1, false);`
+    );
+  } catch (err) {
+    console.error('Failed to sync asset_tag_seq', err);
+  }
 };

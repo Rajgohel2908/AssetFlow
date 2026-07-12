@@ -28,7 +28,7 @@ export const createDepartment = async (req, res) => {
     data,
     include: {
       parentDepartment: { select: { id: true, name: true } },
-      _count: { select: { users: true, assets: true } },
+      _count: { select: { users: true, assetsHeld: true } },
     },
   });
 
@@ -42,7 +42,7 @@ export const getDepartments = async (req, res) => {
     include: {
       parentDepartment: { select: { id: true, name: true } },
       childDepartments: { select: { id: true, name: true } },
-      _count: { select: { users: true, assets: true } },
+      _count: { select: { users: true, assetsHeld: true } },
     },
     orderBy: { name: 'asc' },
   });
@@ -56,7 +56,7 @@ export const getDepartment = async (req, res) => {
       parentDepartment: { select: { id: true, name: true } },
       childDepartments: { select: { id: true, name: true } },
       users: { select: { id: true, name: true, role: true, email: true } },
-      _count: { select: { assets: true } },
+      _count: { select: { assetsHeld: true } },
     },
   });
   if (!dept) throw new ApiError(404, 'Department not found');
@@ -79,7 +79,7 @@ export const updateDepartment = async (req, res) => {
     data,
     include: {
       parentDepartment: { select: { id: true, name: true } },
-      _count: { select: { users: true, assets: true } },
+      _count: { select: { users: true, assetsHeld: true } },
     },
   });
 
@@ -93,15 +93,15 @@ export const updateDepartment = async (req, res) => {
 export const deleteDepartment = async (req, res) => {
   const existing = await prisma.department.findUnique({
     where: { id: req.params.id },
-    include: { _count: { select: { users: true, assets: true, childDepartments: true } } },
+    include: { _count: { select: { users: true, assetsHeld: true, childDepartments: true } } },
   });
   if (!existing) throw new ApiError(404, 'Department not found');
 
   if (existing._count.users > 0) {
     throw new ApiError(409, `Cannot delete department — ${existing._count.users} employee(s) still assigned`);
   }
-  if (existing._count.assets > 0) {
-    throw new ApiError(409, `Cannot delete department — ${existing._count.assets} asset(s) still assigned`);
+  if (existing._count.assetsHeld > 0) {
+    throw new ApiError(409, `Cannot delete department — ${existing._count.assetsHeld} asset(s) still assigned`);
   }
   if (existing._count.childDepartments > 0) {
     throw new ApiError(409, `Cannot delete department — it has ${existing._count.childDepartments} sub-department(s)`);

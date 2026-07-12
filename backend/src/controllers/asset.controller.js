@@ -11,11 +11,13 @@ import { notifyService } from '../services/notification.service.js';
 const createSchema = z.object({
   name: z.string().min(2).max(200),
   categoryId: z.string().cuid(),
-  departmentId: z.string().cuid().optional().nullable(),
-  locationId: z.string().cuid().optional().nullable(),
-  purchaseDate: z.string().datetime().optional().nullable(),
-  purchasePrice: z.coerce.number().nonnegative().optional().nullable(),
-  serialNo: z.string().max(100).optional().nullable(),
+  holderDepartmentId: z.string().cuid().optional().nullable(),
+  location: z.string().optional().nullable(),
+  acquisitionDate: z.string().datetime().optional().nullable(),
+  acquisitionCost: z.coerce.number().nonnegative().optional().nullable(),
+  serialNumber: z.string().max(100).optional().nullable(),
+  condition: z.string().optional().nullable(),
+  isBookable: z.boolean().optional(),
   customFieldValues: z.record(z.any()).default({}),
 });
 
@@ -32,8 +34,8 @@ const querySchema = z.object({
   search: z.string().optional(),
   categoryId: z.string().optional(),
   status: z.string().optional(),
-  departmentId: z.string().optional(),
-  locationId: z.string().optional(),
+  holderDepartmentId: z.string().optional(),
+  location: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
@@ -42,11 +44,12 @@ const querySchema = z.object({
 
 const assetSelect = {
   id: true, assetTag: true, name: true, status: true,
-  purchaseDate: true, purchasePrice: true, serialNo: true,
-  customFieldValues: true, createdAt: true, updatedAt: true,
-  category: { select: { id: true, name: true, customFieldSchema: true } },
-  department: { select: { id: true, name: true } },
-  location: { select: { id: true, name: true } },
+  acquisitionDate: true, acquisitionCost: true, serialNumber: true,
+  location: true, condition: true, isBookable: true,
+  createdAt: true, updatedAt: true,
+  category: { select: { id: true, name: true } },
+  holderDepartment: { select: { id: true, name: true } },
+  holderUser: { select: { id: true, name: true, email: true } },
 };
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
@@ -69,12 +72,13 @@ export const createAsset = async (req, res) => {
       assetTag,
       name: data.name,
       categoryId: data.categoryId,
-      departmentId: data.departmentId ?? null,
-      locationId: data.locationId ?? null,
-      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
-      purchasePrice: data.purchasePrice ?? null,
-      serialNo: data.serialNo ?? null,
-      customFieldValues: data.customFieldValues,
+      holderDepartmentId: data.holderDepartmentId ?? null,
+      location: data.location ?? null,
+      acquisitionDate: data.acquisitionDate ? new Date(data.acquisitionDate) : null,
+      acquisitionCost: data.acquisitionCost ?? null,
+      serialNumber: data.serialNumber ?? null,
+      condition: data.condition ?? null,
+      isBookable: data.isBookable ?? false,
       status: 'AVAILABLE',
     },
     select: assetSelect,
@@ -99,13 +103,13 @@ export const getAssets = async (req, res) => {
       OR: [
         { name: { contains: query.search, mode: 'insensitive' } },
         { assetTag: { contains: query.search, mode: 'insensitive' } },
-        { serialNo: { contains: query.search, mode: 'insensitive' } },
+        { serialNumber: { contains: query.search, mode: 'insensitive' } },
       ],
     }),
     ...(query.categoryId && { categoryId: query.categoryId }),
     ...(query.status && { status: query.status }),
-    ...(query.departmentId && { departmentId: query.departmentId }),
-    ...(query.locationId && { locationId: query.locationId }),
+    ...(query.holderDepartmentId && { holderDepartmentId: query.holderDepartmentId }),
+    ...(query.location && { location: query.location }),
   };
 
   const [assets, total] = await Promise.all([
@@ -236,12 +240,13 @@ export const updateAsset = async (req, res) => {
     data: {
       ...(data.name && { name: data.name }),
       ...(data.categoryId && { categoryId: data.categoryId }),
-      ...(data.departmentId !== undefined && { departmentId: data.departmentId }),
-      ...(data.locationId !== undefined && { locationId: data.locationId }),
-      ...(data.purchaseDate !== undefined && { purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null }),
-      ...(data.purchasePrice !== undefined && { purchasePrice: data.purchasePrice }),
-      ...(data.serialNo !== undefined && { serialNo: data.serialNo }),
-      ...(data.customFieldValues && { customFieldValues: data.customFieldValues }),
+      ...(data.holderDepartmentId !== undefined && { holderDepartmentId: data.holderDepartmentId }),
+      ...(data.location !== undefined && { location: data.location }),
+      ...(data.acquisitionDate !== undefined && { acquisitionDate: data.acquisitionDate ? new Date(data.acquisitionDate) : null }),
+      ...(data.acquisitionCost !== undefined && { acquisitionCost: data.acquisitionCost }),
+      ...(data.serialNumber !== undefined && { serialNumber: data.serialNumber }),
+      ...(data.condition !== undefined && { condition: data.condition }),
+      ...(data.isBookable !== undefined && { isBookable: data.isBookable }),
     },
     select: assetSelect,
   });

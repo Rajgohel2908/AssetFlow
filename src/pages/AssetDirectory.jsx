@@ -1,30 +1,45 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { Plus, X, ChevronRight } from 'lucide-react';
 import DataTable from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
-import { assets, assetHistory, categories, departments } from '../data/mockData';
+import { assetHistory } from '../data/mockData';
+import api from '../utils/api';
 
 const COLUMNS = [
-  { key: 'id',          label: 'Asset ID' },
+  { key: 'assetTag',    label: 'Asset ID' },
   { key: 'name',        label: 'Name' },
-  { key: 'category',    label: 'Category' },
+  { key: 'category',    label: 'Category', render: v => v?.name || v },
   { key: 'status',      label: 'Status', render: v => <StatusBadge status={v} /> },
-  { key: 'department',  label: 'Department', render: v => v ?? '—' },
-  { key: 'assignedTo',  label: 'Assigned To', render: v => v ?? '—' },
+  { key: 'holderDepartment',  label: 'Department', render: v => v?.name ?? '—' },
+  { key: 'holderUser',  label: 'Assigned To', render: v => v?.name ?? '—' },
   { key: 'location',    label: 'Location' },
-  { key: 'value',       label: 'Value', render: v => v ? `₹${Number(v).toLocaleString()}` : '—' },
-  { key: 'purchaseDate',label: 'Purchase Date' },
+  { key: 'acquisitionCost', label: 'Value', render: v => v ? `₹${Number(v).toLocaleString()}` : '—' },
+  { key: 'acquisitionDate', label: 'Purchase Date', render: v => v ? new Date(v).toISOString().split('T')[0] : '—' },
 ];
 
 export default function AssetDirectory() {
-  const [assetsList, setAssetsList] = useState(() => {
-    const saved = localStorage.getItem('assets');
-    return saved ? JSON.parse(saved) : assets;
-  });
+  const [assetsList, setAssetsList] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [departmentsList, setDepartmentsList] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem('assets', JSON.stringify(assetsList));
-  }, [assetsList]);
+    const fetchData = async () => {
+      try {
+        const [assRes, catRes, deptRes] = await Promise.all([
+          api.get('/assets'),
+          api.get('/asset-categories'),
+          api.get('/departments')
+        ]);
+        setAssetsList(assRes.data.data || []);
+        setCategoriesList(catRes.data.data || []);
+        setDepartmentsList(deptRes.data.data || []);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+    fetchData();
+  }, []);
   const [showForm,  setShowForm]  = useState(false);
   const [selected, setSelected]  = useState(null); // asset for drawer
   const [drawerTab, setDrawerTab] = useState('details');
@@ -41,62 +56,67 @@ export default function AssetDirectory() {
   const [newLoc, setNewLoc] = useState('');
   const [newPurchDate, setNewPurchDate] = useState('');
   const [newPurchVal, setNewPurchVal] = useState('');
-  const [newStatus, setNewStatus] = useState('Available');
+  const [newStatus, setNewStatus] = useState('AVAILABLE');
   const [newIsBookable, setNewIsBookable] = useState(false);
 
   const filtered = assetsList.filter(a => {
     if (statusFilter && a.status !== statusFilter) return false;
-    if (catFilter    && a.category !== catFilter)  return false;
+    if (catFilter    && a.category?.name !== catFilter)  return false;
     return true;
   });
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    if (!newName || !newCat) return alert('Name and Category are required');
+    if (!newName || !newCat) return toast.error('Name and Category are required');
     
-    if (editingId) {
-      setAssetsList(prev => prev.map(a => a.id === editingId ? {
-        ...a,
-        name: newName,
-        category: newCat,
-        serialNo: newSerial,
-        department: newDept || null,
-        location: newLoc,
-        purchaseDate: newPurchDate,
-        value: newPurchVal,
-        status: newStatus
-      } : a));
-    } else {
-      const newAsset = {
-        id: `AF-0${100 + assetsList.length + 1}`,
-        name: newName,
-        category: newCat,
-        serialNo: newSerial,
-        department: newDept || null,
-        assignedTo: null,
-        location: newLoc,
-        purchaseDate: newPurchDate,
-        value: newPurchVal,
-        status: newStatus,
-        isBookable: newIsBookable
-      };
-      setAssetsList([newAsset, ...assetsList]);
+    const payload = {
+      name: newName,
+      categoryId: newCat,
+      holderDepartmentId: newDept || null,
+      location: newLoc || null,
+      acquisitionDate: newPurchDate ? new Date(newPurchDate).toISOString() : null,
+      acquisitionCost: newPurchVal ? Number(newPurchVal) : null,
+      serialNumber: newSerial || null,
+      condition: 'Good',
+      isBookable: newIsBookable,
+    };
+
+    try {
+      if (editingId) {
+        const res = await api.put(`/assets/${editingId}`, payload);
+        if (newStatus !== selected.status) {
+          await api.patch(`/assets/${editingId}/status`, { status: newStatus, reason: 'Updated via UI' });
+          res.data.data.status = newStatus;
+        }
+        setAssetsList(prev => prev.map(a => a.id === editingId ? res.data.data : a));
+        toast.success('Asset successfully updated!');
+      } else {
+        const res = await api.post('/assets', payload);
+        if (newStatus !== 'AVAILABLE') {
+          await api.patch(`/assets/${res.data.data.id}/status`, { status: newStatus, reason: 'Initial status setup' });
+          res.data.data.status = newStatus;
+        }
+        setAssetsList([res.data.data, ...assetsList]);
+        toast.success('Asset successfully registered!');
+      }
+      setShowForm(false);
+      setEditingId(null);
+      setNewName(''); setNewCat(''); setNewSerial(''); setNewDept(''); setNewLoc(''); setNewPurchDate(''); setNewPurchVal(''); setNewStatus('AVAILABLE'); setNewIsBookable(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Error saving asset');
     }
-    
-    setShowForm(false);
-    setEditingId(null);
-    setNewName(''); setNewCat(''); setNewSerial(''); setNewDept(''); setNewLoc(''); setNewPurchDate(''); setNewPurchVal(''); setNewStatus('Available'); setNewIsBookable(false);
   };
 
   const handleEditClick = () => {
     setEditingId(selected.id);
     setNewName(selected.name);
-    setNewCat(selected.category);
-    setNewSerial(selected.serialNo || '');
-    setNewDept(selected.department || '');
+    setNewCat(selected.category?.id || selected.categoryId);
+    setNewSerial(selected.serialNumber || '');
+    setNewDept(selected.holderDepartment?.id || selected.holderDepartmentId || '');
     setNewLoc(selected.location || '');
-    setNewPurchDate(selected.purchaseDate || '');
-    setNewPurchVal(selected.value || '');
+    setNewPurchDate(selected.acquisitionDate ? new Date(selected.acquisitionDate).toISOString().split('T')[0] : '');
+    setNewPurchVal(selected.acquisitionCost || '');
     setNewStatus(selected.status);
     setNewIsBookable(selected.isBookable || false);
     setSelected(null);
@@ -128,7 +148,7 @@ export default function AssetDirectory() {
     }
   ], []);
 
-  const history = selected ? (assetHistory[selected.id] ?? []) : [];
+  const history = selected ? (assetHistory[selected.assetTag] ?? []) : [];
 
   return (
     <div className="space-y-5 relative">
@@ -150,7 +170,7 @@ export default function AssetDirectory() {
             <button onClick={() => {
               setShowForm(false);
               setEditingId(null);
-              setNewName(''); setNewCat(''); setNewSerial(''); setNewDept(''); setNewLoc(''); setNewPurchDate(''); setNewPurchVal(''); setNewStatus('Available'); setNewIsBookable(false);
+              setNewName(''); setNewCat(''); setNewSerial(''); setNewDept(''); setNewLoc(''); setNewPurchDate(''); setNewPurchVal(''); setNewStatus('AVAILABLE'); setNewIsBookable(false);
             }} className="btn-ghost py-1 px-2"><X size={14} /></button>
           </div>
           <form onSubmit={handleRegister} className="card-body">
@@ -160,7 +180,7 @@ export default function AssetDirectory() {
                 <label className="form-label">Category *</label>
                 <select required className="form-select" value={newCat} onChange={e => setNewCat(e.target.value)}>
                   <option value="">Select category…</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {categoriesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div><label className="form-label">Serial Number</label><input className="form-input" placeholder="SN-XXXX" value={newSerial} onChange={e => setNewSerial(e.target.value)} /></div>
@@ -168,7 +188,7 @@ export default function AssetDirectory() {
                 <label className="form-label">Department</label>
                 <select className="form-select" value={newDept} onChange={e => setNewDept(e.target.value)}>
                   <option value="">None</option>
-                  {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  {departmentsList.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <div><label className="form-label">Location</label><input className="form-input" placeholder="e.g. Floor 2, Storage A" value={newLoc} onChange={e => setNewLoc(e.target.value)} /></div>
@@ -178,9 +198,9 @@ export default function AssetDirectory() {
               <div>
                 <label className="form-label">Initial Status</label>
                 <select className="form-select" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
-                  <option value="Available">Available</option>
-                  <option value="Allocated">Allocated</option>
-                  <option value="Under Maintenance">Under Maintenance</option>
+                  <option value="AVAILABLE">Available</option>
+                  <option value="ALLOCATED">Allocated</option>
+                  <option value="UNDER_MAINTENANCE">Under Maintenance</option>
                 </select>
               </div>
               <div className="flex items-center gap-2 lg:mt-7">
@@ -197,7 +217,7 @@ export default function AssetDirectory() {
               <button type="button" className="btn-secondary" onClick={() => {
                 setShowForm(false);
                 setEditingId(null);
-                setNewName(''); setNewCat(''); setNewSerial(''); setNewDept(''); setNewLoc(''); setNewPurchDate(''); setNewPurchVal(''); setNewStatus('Available'); setNewIsBookable(false);
+                setNewName(''); setNewCat(''); setNewSerial(''); setNewDept(''); setNewLoc(''); setNewPurchDate(''); setNewPurchVal(''); setNewStatus('AVAILABLE'); setNewIsBookable(false);
               }}>Cancel</button>
             </div>
           </form>
@@ -208,11 +228,16 @@ export default function AssetDirectory() {
       <div className="flex gap-3 flex-wrap">
         <select className="form-select w-44 text-xs" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="">All Statuses</option>
-          {['Available','Allocated','Under Maintenance','Lost','Retired','Disposed'].map(s => <option key={s}>{s}</option>)}
+          <option value="AVAILABLE">Available</option>
+          <option value="ALLOCATED">Allocated</option>
+          <option value="UNDER_MAINTENANCE">Under Maintenance</option>
+          <option value="LOST">Lost</option>
+          <option value="RETIRED">Retired</option>
+          <option value="DISPOSED">Disposed</option>
         </select>
         <select className="form-select w-52 text-xs" value={catFilter} onChange={e => setCatFilter(e.target.value)}>
           <option value="">All Categories</option>
-          {categories.map(c => <option key={c.id}>{c.name}</option>)}
+          {categoriesList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
         {(statusFilter || catFilter) && (
           <button
@@ -230,7 +255,7 @@ export default function AssetDirectory() {
           <DataTable
             columns={colsWithAction}
             data={filtered}
-            searchKeys={['id', 'name', 'assignedTo', 'department', 'serialNo']}
+            searchKeys={['assetTag', 'name', 'holderUser', 'holderDepartment', 'serialNumber']}
           />
         </div>
       </div>
@@ -244,7 +269,7 @@ export default function AssetDirectory() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#f4f4f5]">
               <div>
                 <h3 className="text-base font-semibold text-[#111111]">{selected.name}</h3>
-                <p className="text-xs text-[#a1a1aa]">{selected.id}</p>
+                <p className="text-xs text-[#a1a1aa]">{selected.assetTag}</p>
               </div>
               <button onClick={() => setSelected(null)} className="btn-ghost py-1 px-2"><X size={16} /></button>
             </div>
@@ -252,7 +277,7 @@ export default function AssetDirectory() {
             {/* Status + badge */}
             <div className="px-6 py-3 border-b border-[#f4f4f5] flex items-center gap-3">
               <StatusBadge status={selected.status} />
-              <span className="text-xs text-[#a1a1aa]">{selected.category} · {selected.location}</span>
+              <span className="text-xs text-[#a1a1aa]">{selected.category?.name} · {selected.location}</span>
             </div>
 
             {/* Drawer tabs */}
@@ -272,15 +297,15 @@ export default function AssetDirectory() {
               {drawerTab === 'details' ? (
                 <div className="space-y-3">
                   {[
-                    ['Asset ID',      selected.id],
-                    ['Serial Number', selected.serialNo],
-                    ['Category',      selected.category],
+                    ['Asset ID',      selected.assetTag],
+                    ['Serial Number', selected.serialNumber],
+                    ['Category',      selected.category?.name],
                     ['Status',        <StatusBadge key="s" status={selected.status} />],
-                    ['Department',    selected.department ?? '—'],
-                    ['Assigned To',   selected.assignedTo ?? '—'],
+                    ['Department',    selected.holderDepartment?.name ?? '—'],
+                    ['Assigned To',   selected.holderUser?.name ?? '—'],
                     ['Location',      selected.location],
-                    ['Purchase Date', selected.purchaseDate],
-                    ['Value',         selected.value ? `₹${Number(selected.value).toLocaleString()}` : '—'],
+                    ['Purchase Date', selected.acquisitionDate ? new Date(selected.acquisitionDate).toISOString().split('T')[0] : '—'],
+                    ['Value',         selected.acquisitionCost ? `₹${Number(selected.acquisitionCost).toLocaleString()}` : '—'],
                   ].map(([label, val]) => (
                     <div key={label} className="flex justify-between py-2 border-b border-[#f4f4f5]">
                       <span className="text-xs text-[#71717a]">{label}</span>
@@ -340,8 +365,11 @@ export default function AssetDirectory() {
               </button>
               <button 
                 className="btn-primary !bg-red-600 hover:!bg-red-700 border-transparent shadow-sm" 
-                onClick={() => {
-                  setAssetsList(prev => prev.map(a => a.id === disposeAsset.id ? { ...a, status: 'Disposed' } : a));
+                onClick={async () => {
+                  try {
+                    await api.patch(`/assets/${disposeAsset.id}/status`, { status: 'Disposed', reason: 'Disposed via UI' });
+                    setAssetsList(prev => prev.map(a => a.id === disposeAsset.id ? { ...a, status: 'Disposed' } : a));
+                  } catch (err) { toast.error('Error disposing asset'); }
                   setDisposeAsset(null);
                   setSelected(null);
                 }}
