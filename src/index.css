@@ -115,6 +115,14 @@ body {
 }
 .btn-ghost:hover { background-color: #f3f4f6; }
 
+.btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
+  justify-content: center;
+  white-space: nowrap;
+}
+.btn-primary svg, .btn-secondary svg, .btn-danger svg, .btn-ghost svg {
+  flex-shrink: 0;
+}
+
 /* ─── Card ─────────────────────────────────────────────────── */
 .card {
   background-color: #fff;

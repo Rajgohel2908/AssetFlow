@@ -12,22 +12,53 @@ const COLUMNS = [
   { key: 'department',  label: 'Department', render: v => v ?? '—' },
   { key: 'assignedTo',  label: 'Assigned To', render: v => v ?? '—' },
   { key: 'location',    label: 'Location' },
-  { key: 'value',       label: 'Value', render: v => v ? `$${Number(v).toLocaleString()}` : '—' },
+  { key: 'value',       label: 'Value', render: v => v ? `₹${Number(v).toLocaleString()}` : '—' },
   { key: 'purchaseDate',label: 'Purchase Date' },
 ];
 
 export default function AssetDirectory() {
+  const [assetsList, setAssetsList] = useState(assets);
   const [showForm,  setShowForm]  = useState(false);
   const [selected, setSelected]  = useState(null); // asset for drawer
   const [drawerTab, setDrawerTab] = useState('details');
   const [statusFilter, setStatusFilter] = useState('');
   const [catFilter,    setCatFilter]    = useState('');
+  
+  // Form State
+  const [newName, setNewName] = useState('');
+  const [newCat, setNewCat] = useState('');
+  const [newSerial, setNewSerial] = useState('');
+  const [newDept, setNewDept] = useState('');
+  const [newLoc, setNewLoc] = useState('');
+  const [newPurchDate, setNewPurchDate] = useState('');
+  const [newPurchVal, setNewPurchVal] = useState('');
+  const [newStatus, setNewStatus] = useState('Available');
 
-  const filtered = assets.filter(a => {
+  const filtered = assetsList.filter(a => {
     if (statusFilter && a.status !== statusFilter) return false;
     if (catFilter    && a.category !== catFilter)  return false;
     return true;
   });
+
+  const handleRegister = (e) => {
+    e.preventDefault();
+    if (!newName || !newCat) return alert('Name and Category are required');
+    const newAsset = {
+      id: `AF-0${100 + assetsList.length + 1}`,
+      name: newName,
+      category: newCat,
+      serialNo: newSerial,
+      department: newDept || null,
+      assignedTo: null,
+      location: newLoc,
+      purchaseDate: newPurchDate,
+      value: newPurchVal,
+      status: newStatus
+    };
+    setAssetsList([newAsset, ...assetsList]);
+    setShowForm(false);
+    setNewName(''); setNewCat(''); setNewSerial(''); setNewDept(''); setNewLoc(''); setNewPurchDate(''); setNewPurchVal(''); setNewStatus('Available');
+  };
 
   const colsWithAction = [
     ...COLUMNS,
@@ -51,7 +82,7 @@ export default function AssetDirectory() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="page-title">Asset Directory</h2>
-          <p className="page-subtitle">All {assets.length} registered assets</p>
+          <p className="page-subtitle">All {assetsList.length} registered assets</p>
         </div>
         <button className="btn-primary" onClick={() => setShowForm(s => !s)}>
           <Plus size={14} /> Register Asset
@@ -65,34 +96,34 @@ export default function AssetDirectory() {
             <span className="text-sm font-semibold">Register New Asset</span>
             <button onClick={() => setShowForm(false)} className="btn-ghost py-1 px-2"><X size={14} /></button>
           </div>
-          <div className="card-body">
+          <form onSubmit={handleRegister} className="card-body">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              <div><label className="form-label">Asset Name *</label><input className="form-input" placeholder="e.g. Dell XPS 15" /></div>
+              <div><label className="form-label">Asset Name *</label><input required className="form-input" placeholder="e.g. Dell XPS 15" value={newName} onChange={e => setNewName(e.target.value)} /></div>
               <div>
                 <label className="form-label">Category *</label>
-                <select className="form-select">
+                <select required className="form-select" value={newCat} onChange={e => setNewCat(e.target.value)}>
                   <option value="">Select category…</option>
-                  {categories.map(c => <option key={c.id}>{c.name}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
-              <div><label className="form-label">Serial Number</label><input className="form-input" placeholder="SN-XXXX" /></div>
+              <div><label className="form-label">Serial Number</label><input className="form-input" placeholder="SN-XXXX" value={newSerial} onChange={e => setNewSerial(e.target.value)} /></div>
               <div>
                 <label className="form-label">Department</label>
-                <select className="form-select">
+                <select className="form-select" value={newDept} onChange={e => setNewDept(e.target.value)}>
                   <option value="">None</option>
-                  {departments.map(d => <option key={d.id}>{d.name}</option>)}
+                  {departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                 </select>
               </div>
-              <div><label className="form-label">Location</label><input className="form-input" placeholder="e.g. Floor 2, Storage A" /></div>
-              <div><label className="form-label">Purchase Date</label><input className="form-input" type="date" /></div>
-              <div><label className="form-label">Purchase Value ($)</label><input className="form-input" type="number" placeholder="0" /></div>
+              <div><label className="form-label">Location</label><input className="form-input" placeholder="e.g. Floor 2, Storage A" value={newLoc} onChange={e => setNewLoc(e.target.value)} /></div>
+              <div><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={newPurchDate} onChange={e => setNewPurchDate(e.target.value)} /></div>
+              <div><label className="form-label">Purchase Value (₹)</label><input className="form-input" type="number" placeholder="0" value={newPurchVal} onChange={e => setNewPurchVal(e.target.value)} /></div>
               <div><label className="form-label">Warranty Expiry</label><input className="form-input" type="date" /></div>
               <div>
                 <label className="form-label">Initial Status</label>
-                <select className="form-select">
-                  <option>Available</option>
-                  <option>Allocated</option>
-                  <option>Under Maintenance</option>
+                <select className="form-select" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
+                  <option value="Available">Available</option>
+                  <option value="Allocated">Allocated</option>
+                  <option value="Under Maintenance">Under Maintenance</option>
                 </select>
               </div>
             </div>
@@ -101,10 +132,10 @@ export default function AssetDirectory() {
               <textarea className="form-input h-20 resize-none" placeholder="Additional notes…" />
             </div>
             <div className="flex gap-2 mt-4">
-              <button className="btn-primary">Register Asset</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="submit" className="btn-primary">Register Asset</button>
+              <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -184,7 +215,7 @@ export default function AssetDirectory() {
                     ['Assigned To',   selected.assignedTo ?? '—'],
                     ['Location',      selected.location],
                     ['Purchase Date', selected.purchaseDate],
-                    ['Value',         selected.value ? `$${Number(selected.value).toLocaleString()}` : '—'],
+                    ['Value',         selected.value ? `₹${Number(selected.value).toLocaleString()}` : '—'],
                   ].map(([label, val]) => (
                     <div key={label} className="flex justify-between py-2 border-b border-gray-50">
                       <span className="text-xs text-gray-500">{label}</span>

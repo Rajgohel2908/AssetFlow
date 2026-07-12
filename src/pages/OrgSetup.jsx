@@ -15,15 +15,60 @@ const ROLE_LABELS = {
 
 export default function OrgSetup() {
   const [tab, setTab] = useState(0);
+  
+  const [deptsList, setDeptsList] = useState(departments);
+  const [catsList, setCatsList] = useState(categories);
+  const [empsList, setEmpsList] = useState(employees);
+
   const [showDeptForm, setShowDeptForm] = useState(false);
   const [showCatForm,  setShowCatForm]  = useState(false);
+  const [showEmpForm,  setShowEmpForm]  = useState(false);
+  
+  // Dept Form
+  const [deptName, setDeptName] = useState('');
+  const [deptHead, setDeptHead] = useState('');
+  const [deptBudget, setDeptBudget] = useState('');
+  
+  // Cat Form
+  const [catName, setCatName] = useState('');
+  const [catDesc, setCatDesc] = useState('');
+  
+  // Emp Form
+  const [empName, setEmpName] = useState('');
+  const [empEmail, setEmpEmail] = useState('');
+  const [empDept, setEmpDept] = useState('');
+  const [empRole, setEmpRole] = useState(ROLES.EMPLOYEE);
+
+  const handleAddDept = (e) => {
+    e.preventDefault();
+    if (!deptName) return;
+    setDeptsList([...deptsList, { id: Date.now(), name: deptName, head: deptHead || 'Unassigned', employeeCount: 0, budget: deptBudget || 0 }]);
+    setDeptName(''); setDeptHead(''); setDeptBudget('');
+    setShowDeptForm(false);
+  };
+  
+  const handleAddCat = (e) => {
+    e.preventDefault();
+    if (!catName) return;
+    setCatsList([...catsList, { id: Date.now(), name: catName, description: catDesc, assetCount: 0 }]);
+    setCatName(''); setCatDesc('');
+    setShowCatForm(false);
+  };
+  
+  const handleAddEmp = (e) => {
+    e.preventDefault();
+    if (!empName || !empEmail) return;
+    setEmpsList([...empsList, { id: Date.now(), name: empName, email: empEmail, department: empDept || 'Unassigned', role: empRole, status: 'Active', joinDate: new Date().toISOString().split('T')[0] }]);
+    setEmpName(''); setEmpEmail(''); setEmpDept(''); setEmpRole(ROLES.EMPLOYEE);
+    setShowEmpForm(false);
+  };
 
   // Department columns
   const deptCols = [
     { key: 'name',          label: 'Department' },
     { key: 'head',          label: 'Head' },
     { key: 'employeeCount', label: 'Employees' },
-    { key: 'budget',        label: 'Budget', render: v => `$${Number(v).toLocaleString()}` },
+    { key: 'budget',        label: 'Budget', render: v => `₹${Number(v).toLocaleString()}` },
     {
       key: 'actions', label: 'Actions', sortable: false,
       render: (_, row) => (
@@ -106,26 +151,26 @@ export default function OrgSetup() {
       {tab === 0 && (
         <div className="card">
           <div className="card-header">
-            <span className="text-sm font-semibold">Departments ({departments.length})</span>
+            <span className="text-sm font-semibold">Departments ({deptsList.length})</span>
             <button onClick={() => setShowDeptForm(s => !s)} className="btn-primary text-xs">
               <Plus size={13} /> Add Department
             </button>
           </div>
           {showDeptForm && (
-            <div className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+            <form onSubmit={handleAddDept} className="border-b border-gray-100 px-6 py-4 bg-gray-50">
               <div className="grid grid-cols-3 gap-3">
-                <div><label className="form-label">Name</label><input className="form-input" placeholder="Department name" /></div>
-                <div><label className="form-label">Head</label><input className="form-input" placeholder="Head name" /></div>
-                <div><label className="form-label">Budget ($)</label><input className="form-input" type="number" placeholder="0" /></div>
+                <div><label className="form-label">Name</label><input required className="form-input" placeholder="Department name" value={deptName} onChange={e => setDeptName(e.target.value)} /></div>
+                <div><label className="form-label">Head</label><input className="form-input" placeholder="Head name" value={deptHead} onChange={e => setDeptHead(e.target.value)} /></div>
+                <div><label className="form-label">Budget (₹)</label><input className="form-input" type="number" placeholder="0" value={deptBudget} onChange={e => setDeptBudget(e.target.value)} /></div>
               </div>
               <div className="flex gap-2 mt-3">
-                <button className="btn-primary text-xs">Save</button>
-                <button className="btn-secondary text-xs" onClick={() => setShowDeptForm(false)}>Cancel</button>
+                <button type="submit" className="btn-primary text-xs">Save</button>
+                <button type="button" className="btn-secondary text-xs" onClick={() => setShowDeptForm(false)}>Cancel</button>
               </div>
-            </div>
+            </form>
           )}
           <div className="card-body">
-            <DataTable columns={deptCols} data={departments} searchKeys={['name', 'head']} />
+            <DataTable columns={deptCols} data={deptsList} searchKeys={['name', 'head']} />
           </div>
         </div>
       )}
@@ -133,25 +178,25 @@ export default function OrgSetup() {
       {tab === 1 && (
         <div className="card">
           <div className="card-header">
-            <span className="text-sm font-semibold">Asset Categories ({categories.length})</span>
+            <span className="text-sm font-semibold">Asset Categories ({catsList.length})</span>
             <button onClick={() => setShowCatForm(s => !s)} className="btn-primary text-xs">
               <Plus size={13} /> Add Category
             </button>
           </div>
           {showCatForm && (
-            <div className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+            <form onSubmit={handleAddCat} className="border-b border-gray-100 px-6 py-4 bg-gray-50">
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">Category Name</label><input className="form-input" placeholder="e.g. Networking Gear" /></div>
-                <div><label className="form-label">Description</label><input className="form-input" placeholder="Short description" /></div>
+                <div><label className="form-label">Category Name</label><input required className="form-input" placeholder="e.g. Networking Gear" value={catName} onChange={e => setCatName(e.target.value)} /></div>
+                <div><label className="form-label">Description</label><input className="form-input" placeholder="Short description" value={catDesc} onChange={e => setCatDesc(e.target.value)} /></div>
               </div>
               <div className="flex gap-2 mt-3">
-                <button className="btn-primary text-xs">Save</button>
-                <button className="btn-secondary text-xs" onClick={() => setShowCatForm(false)}>Cancel</button>
+                <button type="submit" className="btn-primary text-xs">Save</button>
+                <button type="button" className="btn-secondary text-xs" onClick={() => setShowCatForm(false)}>Cancel</button>
               </div>
-            </div>
+            </form>
           )}
           <div className="card-body">
-            <DataTable columns={catCols} data={categories} searchKeys={['name', 'description']} />
+            <DataTable columns={catCols} data={catsList} searchKeys={['name', 'description']} />
           </div>
         </div>
       )}
@@ -159,11 +204,36 @@ export default function OrgSetup() {
       {tab === 2 && (
         <div className="card">
           <div className="card-header">
-            <span className="text-sm font-semibold">Employee Directory ({employees.length})</span>
-            <button className="btn-primary text-xs"><Plus size={13} /> Add Employee</button>
+            <span className="text-sm font-semibold">Employee Directory ({empsList.length})</span>
+            <button onClick={() => setShowEmpForm(s => !s)} className="btn-primary text-xs"><Plus size={13} /> Add Employee</button>
           </div>
+          {showEmpForm && (
+            <form onSubmit={handleAddEmp} className="border-b border-gray-100 px-6 py-4 bg-gray-50">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div><label className="form-label">Name</label><input required className="form-input" placeholder="Employee Name" value={empName} onChange={e => setEmpName(e.target.value)} /></div>
+                <div><label className="form-label">Email</label><input required type="email" className="form-input" placeholder="Email" value={empEmail} onChange={e => setEmpEmail(e.target.value)} /></div>
+                <div>
+                  <label className="form-label">Department</label>
+                  <select className="form-select" value={empDept} onChange={e => setEmpDept(e.target.value)}>
+                    <option value="">None</option>
+                    {deptsList.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Role</label>
+                  <select className="form-select" value={empRole} onChange={e => setEmpRole(e.target.value)}>
+                    {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button type="submit" className="btn-primary text-xs">Save</button>
+                <button type="button" className="btn-secondary text-xs" onClick={() => setShowEmpForm(false)}>Cancel</button>
+              </div>
+            </form>
+          )}
           <div className="card-body">
-            <DataTable columns={empCols} data={employees} searchKeys={['name', 'email', 'department']} />
+            <DataTable columns={empCols} data={empsList} searchKeys={['name', 'email', 'department']} />
           </div>
         </div>
       )}

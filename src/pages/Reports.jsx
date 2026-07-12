@@ -136,7 +136,7 @@ export default function Reports() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Avg. Asset Utilization', value: '78.5%', desc: 'Last 7 months' },
-          { label: 'Total Maintenance Cost', value: '$1,980', desc: 'Current FY' },
+          { label: 'Total Maintenance Cost', value: '₹1,980', desc: 'Current FY' },
           { label: 'Most Allocated Dept',    value: 'Engineering', desc: '85 assets' },
           { label: 'Top Maintenance Cat.',   value: 'Laptops', desc: '12 requests' },
         ].map(s => (

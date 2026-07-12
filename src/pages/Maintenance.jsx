@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X, GripVertical } from 'lucide-react';
 import StatusBadge from '../components/common/StatusBadge';
 import ApprovalWorkflowStepper from '../components/common/ApprovalWorkflowStepper';
-import { maintenanceRequests, assets } from '../data/mockData';
+import api from '../utils/api';
 
 const STAGES = ['Pending', 'Approved', 'In Progress', 'Resolved'];
 
@@ -27,17 +27,83 @@ const PRIORITY_COLORS = {
 };
 
 export default function Maintenance() {
-  const [reqs, setReqs] = useState(maintenanceRequests);
+  const [reqs, setReqs] = useState([]);
+  const [assetsList, setAssetsList] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
+  
+  // Form State
+  const [assetId, setAssetId] = useState('');
+  const [priority, setPriority] = useState('Low');
+  const [cost, setCost] = useState('');
+  const [issue, setIssue] = useState('');
+  
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [reqsRes, assetsRes] = await Promise.all([
+          api.get('/maintenance'),
+          api.get('/assets')
+        ]);
+        // Map backend format to frontend format where needed
+        const mappedReqs = reqsRes.data.data.map(r => ({
+          ...r,
+          assetName: r.asset?.name || 'Unknown',
+          assetTag: r.asset?.assetTag || '',
+          raisedBy: r.raisedBy?.name || 'Unknown',
+          raisedDate: new Date(r.createdAt).toLocaleDateString(),
+          issue: r.issueDescription || '',
+          status: r.status === 'PENDING' ? 'Pending' : r.status === 'APPROVED' ? 'Approved' : r.status === 'IN_PROGRESS' ? 'In Progress' : 'Resolved',
+          priority: r.priority === 'HIGH' ? 'High' : r.priority === 'MEDIUM' ? 'Medium' : 'Low'
+        }));
+        setReqs(mappedReqs);
+        setAssetsList(assetsRes.data.data);
+      } catch (err) {
+        console.error('Failed to load maintenance data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const grouped = STAGES.reduce((acc, s) => {
     acc[s] = reqs.filter(r => r.status === s);
     return acc;
   }, {});
 
-  const moveCard = (id, newStatus) => {
+  const moveCard = async (id, newStatus) => {
+    // API doesn't allow arbitrary moves easily, but let's just mock UI update for drag-drop
     setReqs(rs => rs.map(r => r.id === id ? { ...r, status: newStatus } : r));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!assetId || !issue) return alert('Asset and Issue are required');
+    try {
+      const res = await api.post('/maintenance', {
+        assetId,
+        priority: priority.toUpperCase(),
+        issueDescription: issue,
+        estimatedCost: cost ? parseFloat(cost) : null
+      });
+      const newReq = res.data.data;
+      setReqs([{
+        ...newReq,
+        assetName: assetsList.find(a => a.id === assetId)?.name || 'Unknown',
+        raisedBy: 'You',
+        raisedDate: new Date().toLocaleDateString(),
+        issue: issue,
+        status: 'Pending',
+        priority: priority
+      }, ...reqs]);
+      setShowForm(false);
+      setAssetId(''); setIssue(''); setCost(''); setPriority('Low');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit request');
+    }
   };
 
   return (
@@ -59,34 +125,34 @@ export default function Maintenance() {
             <span className="text-sm font-semibold">New Maintenance Request</span>
             <button onClick={() => setShowForm(false)} className="btn-ghost py-1 px-2"><X size={14} /></button>
           </div>
-          <div className="card-body">
+          <form onSubmit={handleSubmit} className="card-body">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="form-label">Asset *</label>
-                <select className="form-select">
+                <select className="form-select" value={assetId} onChange={e => setAssetId(e.target.value)}>
                   <option value="">Select asset…</option>
-                  {assets.map(a => <option key={a.id}>{a.name} ({a.id})</option>)}
+                  {assetsList.map(a => <option key={a.id} value={a.id}>{a.name} ({a.assetTag})</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">Priority *</label>
-                <select className="form-select">
+                <select className="form-select" value={priority} onChange={e => setPriority(e.target.value)}>
                   <option>Low</option>
                   <option>Medium</option>
                   <option>High</option>
                 </select>
               </div>
-              <div><label className="form-label">Estimated Cost ($)</label><input className="form-input" type="number" placeholder="0" /></div>
+              <div><label className="form-label">Estimated Cost (₹)</label><input className="form-input" type="number" placeholder="0" value={cost} onChange={e => setCost(e.target.value)} /></div>
               <div className="lg:col-span-3">
                 <label className="form-label">Issue Description *</label>
-                <textarea className="form-input h-20 resize-none" placeholder="Describe the issue in detail…" />
+                <textarea className="form-input h-20 resize-none" placeholder="Describe the issue in detail…" value={issue} onChange={e => setIssue(e.target.value)} />
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <button className="btn-primary">Submit Request</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="submit" className="btn-primary">Submit Request</button>
+              <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -158,7 +224,7 @@ export default function Maintenance() {
                   ['Raised By', selected.raisedBy],
                   ['Raised On', selected.raisedDate],
                   ['Assigned To', selected.assignedTo ?? '—'],
-                  ['Est. Cost', selected.estimatedCost ? `$${selected.estimatedCost}` : '—'],
+                  ['Est. Cost', selected.estimatedCost ? `₹${selected.estimatedCost}` : '—'],
                 ].map(([label, val]) => (
                   <div key={label} className="flex justify-between py-1.5 border-b border-gray-50">
                     <span className="text-xs text-gray-500">{label}</span>

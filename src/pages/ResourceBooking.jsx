@@ -8,21 +8,58 @@ import { format, addDays, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
 
 export default function ResourceBooking() {
+  const [bookingsList, setBookingsList] = useState(bookings);
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date('2024-01-15'), { weekStartsOn: 1 }));
   const [showForm,   setShowForm]  = useState(false);
   const [conflict,   setConflict]  = useState(false);
+  
+  // Form State
   const [selectedRes, setSelectedRes] = useState('');
+  const [bookDate, setBookDate] = useState('2024-01-15');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
+  const [purpose, setPurpose] = useState('');
+
   const [tab, setTab] = useState(0); // 0=calendar, 1=list
 
   const weekDays = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i));
 
   // Map bookings to calendar cells
   const bookingMap = {};
-  bookings.forEach(b => {
+  bookingsList.forEach(b => {
     const key = `${b.resource}|${b.date}`;
     if (!bookingMap[key]) bookingMap[key] = [];
     bookingMap[key].push(b);
   });
+
+  const handleBook = (e) => {
+    e.preventDefault();
+    if (!selectedRes || !purpose) return;
+    
+    // Check overlap
+    const existing = bookingsList.filter(b => b.resource === selectedRes && b.date === bookDate && b.status === 'Confirmed');
+    const isConflict = existing.some(b => (startTime >= b.startTime && startTime < b.endTime) || (endTime > b.startTime && endTime <= b.endTime));
+    
+    if (isConflict) {
+      setConflict(true);
+      setShowForm(false);
+      return;
+    }
+
+    const newBooking = {
+      id: `BKG-00${bookingsList.length + 1}`,
+      resource: selectedRes,
+      bookedBy: 'Current User',
+      date: bookDate,
+      startTime,
+      endTime,
+      purpose,
+      status: 'Confirmed'
+    };
+    setBookingsList([...bookingsList, newBooking]);
+    setShowForm(false);
+    setSelectedRes(''); setPurpose('');
+  };
 
   return (
     <div className="space-y-5">
@@ -43,37 +80,36 @@ export default function ResourceBooking() {
             <span className="text-sm font-semibold">New Booking</span>
             <button onClick={() => setShowForm(false)} className="btn-ghost py-1 px-2"><X size={14} /></button>
           </div>
-          <div className="card-body">
+          <form onSubmit={handleBook} className="card-body">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="form-label">Resource *</label>
-                <select className="form-select" value={selectedRes} onChange={e => setSelectedRes(e.target.value)}>
+                <select required className="form-select" value={selectedRes} onChange={e => setSelectedRes(e.target.value)}>
                   <option value="">Select resource…</option>
-                  {resources.map(r => <option key={r.id}>{r.name} ({r.type})</option>)}
+                  {resources.map(r => <option key={r.id} value={r.name}>{r.name} ({r.type})</option>)}
                 </select>
               </div>
-              <div><label className="form-label">Date *</label><input className="form-input" type="date" defaultValue="2024-01-15" /></div>
+              <div><label className="form-label">Date *</label><input required className="form-input" type="date" value={bookDate} onChange={e => setBookDate(e.target.value)} /></div>
               <div>
                 <label className="form-label">Start Time *</label>
-                <select className="form-select">
-                  {HOURS.map(h => <option key={h}>{h}</option>)}
+                <select className="form-select" value={startTime} onChange={e => setStartTime(e.target.value)}>
+                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">End Time *</label>
-                <select className="form-select">
-                  {HOURS.map(h => <option key={h}>{h}</option>)}
+                <select className="form-select" value={endTime} onChange={e => setEndTime(e.target.value)}>
+                  {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
               </div>
-              <div><label className="form-label">Purpose</label><input className="form-input" placeholder="e.g. Sprint Planning" /></div>
+              <div><label className="form-label">Purpose</label><input required className="form-input" placeholder="e.g. Sprint Planning" value={purpose} onChange={e => setPurpose(e.target.value)} /></div>
               <div><label className="form-label">Attendees</label><input className="form-input" type="number" placeholder="1" /></div>
             </div>
             <div className="flex gap-2 mt-4">
-              {/* Demo: trigger overlap conflict */}
-              <button className="btn-primary" onClick={() => { setShowForm(false); setConflict(true); }}>Check & Book</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="submit" className="btn-primary">Check & Book</button>
+              <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -165,7 +201,7 @@ export default function ResourceBooking() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {bookings.map(b => (
+                {bookingsList.map(b => (
                   <tr key={b.id} className="table-tr">
                     <td className="table-td">{b.id}</td>
                     <td className="table-td font-medium">{b.resource}</td>

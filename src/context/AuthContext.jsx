@@ -1,21 +1,43 @@
 import { createContext, useContext, useState } from 'react';
 import { demoUsers } from '../data/mockData';
 
+import api from '../utils/api';
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-
-  const login = (email, password) => {
-    const found = demoUsers.find(u => u.email === email && u.password === password);
-    if (found) {
-      setUser(found);
-      return { success: true };
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      if (saved && saved !== 'undefined') {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to parse user from localStorage', e);
+      localStorage.removeItem('user');
     }
-    return { success: false, error: 'Invalid email or password.' };
+    return null;
+  });
+
+  const login = async (email, password) => {
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      // The backend returns { success: true, data: { accessToken, user } }
+      const { user, accessToken } = res.data.data;
+      localStorage.setItem('token', accessToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      setUser(user);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Login failed' };
+    }
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

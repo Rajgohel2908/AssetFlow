@@ -22,7 +22,6 @@ export const activityLogService = {
         action,
         entityType,
         entityId,
-        changes,
       },
     });
   },

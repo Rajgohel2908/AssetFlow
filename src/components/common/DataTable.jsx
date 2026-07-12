@@ -45,7 +45,7 @@ export default function DataTable({ columns, data, searchKeys = [], pageSize = P
         <div className="mb-3 relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
-            className="form-input pl-9 w-full max-w-xs"
+            className="form-input !pl-9 w-full max-w-xs"
             placeholder="Search…"
             value={query}
             onChange={e => { setQuery(e.target.value); setPage(1); }}

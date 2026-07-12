@@ -4,7 +4,8 @@ import DataTable from '../components/common/DataTable';
 import StatusBadge from '../components/common/StatusBadge';
 import ConflictModal from '../components/common/ConflictModal';
 import ApprovalWorkflowStepper from '../components/common/ApprovalWorkflowStepper';
-import { allocations, transferRequests, assets, employees } from '../data/mockData';
+import { allocations as initialAllocations, transferRequests, assets, employees } from '../data/mockData';
+import api from '../utils/api';
 
 const ALLOC_COLS = [
   { key: 'id',         label: 'ID' },
@@ -31,14 +32,48 @@ export default function AssetAllocation() {
   const [showForm,     setShowForm]     = useState(false);
   const [showTrfForm,  setShowTrfForm]  = useState(false);
   const [conflictOpen, setConflictOpen] = useState(false);
+  const [conflictInfo, setConflictInfo] = useState('');
   const [selectedAsset, setSelectedAsset] = useState('');
+  const [selectedUser, setSelectedUser] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [stepperStatus, setStepperStatus] = useState('Approved');
+  const [allocs, setAllocs] = useState(initialAllocations);
 
   const availableAssets = assets.filter(a => a.status === 'Available');
 
-  const handleAllocate = () => {
-    // Simulate conflict for demo
-    setConflictOpen(true);
+  const handleAllocate = async () => {
+    if (!selectedAsset || !selectedUser) return alert('Select asset and user');
+    try {
+      const res = await api.post('/allocations', {
+        assetId: selectedAsset,
+        userId: selectedUser,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      });
+      // success!
+      setAllocs([{
+        id: res.data.data.id,
+        assetName: assets.find(a => a.id === selectedAsset)?.name || selectedAsset,
+        assignedTo: employees.find(e => e.id === selectedUser)?.name || selectedUser,
+        department: 'N/A',
+        allocatedOn: new Date().toLocaleDateString(),
+        dueReturn: dueDate || null,
+        status: 'Active'
+      }, ...allocs]);
+      setShowForm(false);
+      setSelectedAsset(''); setSelectedUser(''); setDueDate('');
+    } catch (err) {
+      if (err.response?.status === 409) {
+        const holder = err.response.data.details?.[0]?.currentHolder;
+        if (holder) {
+          setConflictInfo(`${holder.name} (${holder.department || 'Unknown'})`);
+        } else {
+          setConflictInfo('Someone else');
+        }
+        setConflictOpen(true);
+      } else {
+        alert('Failed to allocate: ' + (err.response?.data?.message || err.message));
+      }
+    }
   };
 
   return (
@@ -76,12 +111,12 @@ export default function AssetAllocation() {
               </div>
               <div>
                 <label className="form-label">Assign To *</label>
-                <select className="form-select">
+                <select className="form-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
                   <option value="">Select employee…</option>
-                  {employees.map(e => <option key={e.id}>{e.name} — {e.department}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} — {e.department}</option>)}
                 </select>
               </div>
-              <div><label className="form-label">Due Return Date</label><input className="form-input" type="date" /></div>
+              <div><label className="form-label">Due Return Date</label><input className="form-input" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
               <div>
                 <label className="form-label">Purpose</label>
                 <input className="form-input" placeholder="Reason for allocation" />
@@ -158,7 +193,7 @@ export default function AssetAllocation() {
           <div className="card-body">
             <DataTable
               columns={ALLOC_COLS}
-              data={allocations}
+              data={allocs}
               searchKeys={['assetName', 'assignedTo', 'department']}
             />
           </div>
@@ -205,13 +240,12 @@ export default function AssetAllocation() {
         </div>
       )}
 
-      {/* Conflict Modal demo */}
       <ConflictModal
         isOpen={conflictOpen}
         onClose={() => setConflictOpen(false)}
         title="Asset Already Allocated"
         message="This asset is currently allocated to another employee and cannot be directly assigned."
-        conflictDetail={'MacBook Pro 14\u201d (AST-001) is currently held by Grace Lee (Engineering) until 2024-07-01.'}
+        conflictDetail={`This asset is currently held by ${conflictInfo}.`}
         alternativeLabel="Request Transfer Instead"
         onAlternative={() => { setConflictOpen(false); setShowTrfForm(true); setShowForm(false); }}
       />

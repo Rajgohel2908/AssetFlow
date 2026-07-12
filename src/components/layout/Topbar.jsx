@@ -4,10 +4,10 @@ import { notifications } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 
 const ROLE_LABELS = {
-  employee:      'Employee',
-  dept_head:     'Dept Head',
-  asset_manager: 'Asset Manager',
-  admin:         'Admin',
+  EMPLOYEE:        'Employee',
+  DEPARTMENT_HEAD: 'Dept Head',
+  ASSET_MANAGER:   'Asset Manager',
+  ADMIN:           'Admin',
 };
 
 export default function Topbar({ title }) {

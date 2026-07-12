@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import KPICard from '../components/common/KPICard';
 import StatusBadge from '../components/common/StatusBadge';
 import {
-  Package, CheckCircle, Inbox, Wrench, Clock, DollarSign,
+  Package, CheckCircle, Inbox, Wrench, Clock, IndianRupee,
   Plus, Search, ArrowLeftRight, ClipboardList
 } from 'lucide-react';
 import {
@@ -18,7 +18,7 @@ const KPI_CONFIG = [
   { key: 'available',        icon: Inbox,        color: 'emerald' },
   { key: 'underMaintenance', icon: Wrench,       color: 'amber' },
   { key: 'overdueReturns',   icon: Clock,        color: 'red' },
-  { key: 'totalValue',       icon: DollarSign,   color: 'purple' },
+  { key: 'totalValue',       icon: IndianRupee,   color: 'purple' },
 ];
 
 export default function Dashboard() {

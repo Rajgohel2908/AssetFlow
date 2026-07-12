@@ -14,6 +14,27 @@ export default function AssetAudit() {
   const [cycles, setCycles]     = useState(auditCycles);
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  
+  const [auditName, setAuditName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const handleCreateAudit = (e) => {
+    e.preventDefault();
+    if (!auditName) return;
+    const newCycle = {
+      id: `AUD-00${cycles.length + 1}`,
+      name: auditName,
+      createdBy: 'Current User',
+      startDate: startDate || new Date().toISOString().split('T')[0],
+      endDate: endDate || new Date().toISOString().split('T')[0],
+      status: 'Open',
+      checklist: assets.slice(0, 5).map(a => ({ assetId: a.id, assetName: a.name, status: 'Verified', note: '' })) // sample checklist
+    };
+    setCycles([newCycle, ...cycles]);
+    setShowForm(false);
+    setAuditName(''); setStartDate(''); setEndDate('');
+  };
 
   const updateChecklistItem = (cycleId, assetId, newStatus) => {
     setCycles(cs => cs.map(c =>
@@ -52,11 +73,11 @@ export default function AssetAudit() {
             <span className="text-sm font-semibold">New Audit Cycle</span>
             <button onClick={() => setShowForm(false)} className="btn-ghost py-1 px-2"><X size={14} /></button>
           </div>
-          <div className="card-body">
+          <form onSubmit={handleCreateAudit} className="card-body">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
                 <label className="form-label">Audit Name *</label>
-                <input className="form-input" placeholder="e.g. Q1 2024 Full Audit" />
+                <input required className="form-input" placeholder="e.g. Q1 2024 Full Audit" value={auditName} onChange={e => setAuditName(e.target.value)} />
               </div>
               <div>
                 <label className="form-label">Scope</label>
@@ -67,8 +88,8 @@ export default function AssetAudit() {
                   <option>Vehicles</option>
                 </select>
               </div>
-              <div><label className="form-label">Start Date</label><input className="form-input" type="date" /></div>
-              <div><label className="form-label">End Date</label><input className="form-input" type="date" /></div>
+              <div><label className="form-label">Start Date</label><input className="form-input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+              <div><label className="form-label">End Date</label><input className="form-input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
               <div>
                 <label className="form-label">Assign Auditor</label>
                 <select className="form-select">
@@ -79,10 +100,10 @@ export default function AssetAudit() {
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <button className="btn-primary">Create Audit</button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="submit" className="btn-primary">Create Audit</button>
+              <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
