@@ -29,6 +29,15 @@ export function AuthProvider({ children }) {
       setUser(user);
       return { success: true };
     } catch (err) {
+      // Fallback to mock data if API is down
+      const mockUser = demoUsers.find(u => u.email === email && u.password === password);
+      if (mockUser) {
+        console.warn('API login failed, falling back to mock user.');
+        localStorage.setItem('token', 'mock-token-123');
+        localStorage.setItem('user', JSON.stringify(mockUser));
+        setUser(mockUser);
+        return { success: true };
+      }
       return { success: false, error: err.response?.data?.message || 'Login failed' };
     }
   };

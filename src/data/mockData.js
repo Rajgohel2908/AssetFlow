@@ -35,9 +35,10 @@ export const employees = [
 ];
 
 export const demoUsers = [
-  { id: 1, name: 'Rudra Admin', email: 'rudra@gmail.com', role: ROLES.ADMIN, department: 'IT & Security', password: 'rudi' },
-  { id: 2, name: 'Rahul Verma', email: 'manager@assetflow.com', role: ROLES.ASSET_MANAGER, department: 'IT & Security', password: 'password123' },
-  { id: 3, name: 'Aarav Patel', email: 'employee@assetflow.com', role: ROLES.EMPLOYEE, department: 'Engineering', password: 'password123' }
+  { id: 1, name: 'Rudra Admin',   email: 'admin@assetflow.io',   role: ROLES.ADMIN,         department: 'IT & Security',    password: 'password' },
+  { id: 2, name: 'Rahul Verma',   email: 'manager@assetflow.io', role: ROLES.ASSET_MANAGER, department: 'IT & Security',    password: 'password' },
+  { id: 3, name: 'Priya Sharma',  email: 'head@assetflow.io',    role: ROLES.DEPT_HEAD,     department: 'Product & Design', password: 'password' },
+  { id: 4, name: 'Aarav Patel',   email: 'user@assetflow.io',    role: ROLES.EMPLOYEE,      department: 'Engineering',      password: 'password' },
 ];
 
 export const assets = [
@@ -92,6 +93,7 @@ export const utilizationTrend = [
 
 export const maintenanceFrequency = [];
 export const deptAllocationData = [];
+
 export const allocations = [
   { id: 'ALC-901', assetId: 'AF-1001', assetName: 'Apple MacBook Pro M3 Max 16"', assignedTo: 'Aarav Patel', department: 'Engineering', allocatedOn: '2023-11-18', dueReturn: null, status: 'Active' },
   { id: 'ALC-902', assetId: 'AF-1004', assetName: 'Herman Miller Aeron Chair', assignedTo: 'Aarav Patel', department: 'Engineering', allocatedOn: '2022-05-15', dueReturn: null, status: 'Active' },
@@ -117,6 +119,7 @@ export const transferRequests = [
   { id: 'TRF-014', assetId: 'AF-1105', assetName: 'Sony WH-1000XM5', from: 'IT Store', to: 'Neha Gupta', toDept: 'Finance & Legal', date: '2024-03-08', status: 'Pending' },
   { id: 'TRF-015', assetId: 'AF-1122', assetName: 'Samsung 49" Odyssey', from: 'IT Store', to: 'Aarav Patel', toDept: 'Engineering', date: '2024-02-29', status: 'Approved' },
 ];
+
 export const bookings = [
   { id: 'BKG-001', resource: 'Conference Room A', bookedBy: 'Alice Johnson', date: '2024-01-15', startTime: '09:00', endTime: '11:00', purpose: 'Sprint Planning', status: 'Confirmed' },
   { id: 'BKG-002', resource: 'Projector 4K', bookedBy: 'Bob Smith', date: '2024-01-16', startTime: '13:00', endTime: '15:00', purpose: 'Client Presentation', status: 'Confirmed' },
@@ -131,9 +134,11 @@ export const resources = [
   { id: 'RES-05', name: 'Design Tablet Wacom', type: 'Equipment', capacity: 1 },
   { id: 'RES-06', name: 'Poly Studio Cam', type: 'Equipment', capacity: 1 },
 ];
+
 export const maintenanceRequests = [];
 export const auditCycles = [];
 export const activityLogs = [];
+
 export const notifications = [
   { id: 1, type: 'warning', message: '13 Assets are currently overdue for return.', time: '2 hours ago', read: false },
   { id: 2, type: 'info', message: 'New MacBook batch arrived in IT store.', time: '5 hours ago', read: false },

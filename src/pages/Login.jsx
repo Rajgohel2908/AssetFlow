@@ -32,10 +32,15 @@ export default function Login() {
     if (!result.success) setError(result.error);
   };
 
-  const quickLogin = (em) => {
+  const quickLogin = async (em) => {
     setEmail(em);
     setPassword('password');
     setError('');
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 600));
+    const result = await login(em, 'password');
+    setLoading(false);
+    if (!result.success) setError(result.error);
   };
 
   return (
