@@ -20,12 +20,14 @@ export default function Layout() {
   const title = ROUTE_TITLES[pathname] ?? 'AssetFlow';
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="app-canvas flex h-screen overflow-hidden text-[#111111]">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar title={title} />
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          <Outlet />
+        <main className="soft-grid flex-1 overflow-y-auto p-5 sm:p-6">
+          <div key={pathname} className="route-transition">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -35,12 +35,13 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome row */}
-      <div className="flex items-center justify-between">
+      <div className="hero-strip px-5 py-5 sm:px-6 sm:py-6 flex items-center justify-between gap-4">
         <div>
+          <p className="section-title mb-2">Overview</p>
           <h2 className="page-title">Good morning, {user?.name?.split(' ')[0]} 👋</h2>
           <p className="page-subtitle">Here's what's happening across your organization today.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 relative z-10">
           <button onClick={() => navigate('/assets')} className="btn-secondary">
             <Search size={14} /> Find Asset
           </button>

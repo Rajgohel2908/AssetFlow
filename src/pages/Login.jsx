@@ -27,7 +27,7 @@ export default function Login() {
     if (!email || !password) { setError('Please enter your email and password.'); return; }
     setLoading(true);
     await new Promise(r => setTimeout(r, 600)); // simulate network
-    const result = login(email, password);
+    const result = await login(email, password);
     setLoading(false);
     if (!result.success) setError(result.error);
   };
@@ -44,63 +44,75 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-primary-950 to-gray-900 flex">
-      {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
-            <Zap size={20} className="text-white" />
+    <div className="app-canvas min-h-screen flex items-center justify-center p-5 sm:p-8">
+      <div className="w-full max-w-5xl grid lg:grid-cols-[1.15fr_0.85fr] overflow-hidden rounded-[2rem] border border-[#e4e4e7] bg-white shadow-[0_24px_60px_rgba(0,0,0,0.06)]">
+        {/* Left panel — branding */}
+        <div className="login-panel-art hidden lg:flex flex-col justify-between p-10 xl:p-12 bg-[#fafafa] border-r border-[#f4f4f5]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#18181b] flex items-center justify-center">
+              <Zap size={20} className="text-white" />
+            </div>
+            <div>
+              <span className="text-lg font-semibold tracking-tight text-[#111111]">AssetFlow</span>
+              <p className="text-xs text-[#a1a1aa]">Enterprise ERM</p>
+            </div>
           </div>
-          <div>
-            <span className="text-xl font-bold">AssetFlow</span>
-            <p className="text-xs text-white/50">Enterprise ERM</p>
-          </div>
-        </div>
 
-        <div>
-          <h1 className="text-4xl font-bold leading-tight mb-4">
-            Every asset.<br />One system.
-          </h1>
-          <p className="text-white/60 text-sm leading-relaxed max-w-md">
-            Track, allocate, and manage your organization's assets with precision.
-            Full audit trails, role-based access, and real-time visibility — all in one place.
-          </p>
+          <div className="max-w-md relative z-10">
+            <p className="text-xs uppercase tracking-[0.18em] text-[#a1a1aa] mb-4">Minimal asset operations</p>
+            <h1 className="text-4xl font-semibold leading-tight tracking-tight text-[#111111] mb-4">
+              One quiet interface for every asset.
+            </h1>
+            <p className="text-sm leading-6 text-[#71717a] max-w-lg">
+              Track, allocate, and manage assets with a clean hierarchy, soft contrast, and no visual noise.
+            </p>
 
-          {/* Feature pills */}
-          <div className="flex flex-wrap gap-2 mt-8">
-            {['Asset Tracking', 'Resource Booking', 'Maintenance', 'Audit Cycles', 'Analytics', 'Role-based Access'].map(f => (
-              <span key={f} className="px-3 py-1 bg-white/10 rounded-full text-xs text-white/70">{f}</span>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-xs text-white/30">© 2024 AssetFlow. Internal use only.</p>
-      </div>
-
-      {/* Right panel — form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          {/* Card */}
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-100">
-              {['login', 'signup'].map(t => (
-                <button
-                  key={t}
-                  className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${
-                    tab === t ? 'text-primary-700 border-b-2 border-primary-600 bg-primary-50/50' : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                  onClick={() => { setTab(t); setError(''); }}
-                >
-                  {t === 'login' ? 'Sign In' : 'Create Account'}
-                </button>
+            <div className="grid grid-cols-2 gap-3 mt-8 max-w-lg">
+              {['Asset Tracking', 'Resource Booking', 'Maintenance', 'Audit Cycles'].map(f => (
+                <div key={f} className="rounded-2xl border border-[#d4d4d8] bg-white px-4 py-3 text-sm text-[#3f3f46]">
+                  {f}
+                </div>
               ))}
             </div>
+          </div>
 
-            <div className="p-8">
+          <p className="text-xs text-[#a1a1aa]">© 2024 AssetFlow. Internal use only.</p>
+        </div>
+
+        {/* Right panel — form */}
+        <div className="flex flex-col items-center justify-center p-6 sm:p-8 lg:p-10">
+          <div className="w-full max-w-md">
+            <div className="mb-6 lg:hidden flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#18181b] flex items-center justify-center">
+                <Zap size={20} className="text-white" />
+              </div>
+              <div>
+                <span className="text-lg font-semibold tracking-tight text-[#111111]">AssetFlow</span>
+                <p className="text-xs text-[#a1a1aa]">Enterprise ERM</p>
+              </div>
+            </div>
+
+            {/* Card */}
+            <div className="bg-white rounded-[1.5rem] border border-[#e4e4e7] shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden">
+              {/* Tabs */}
+              <div className="flex border-b border-[#f4f4f5]">
+                {['login', 'signup'].map(t => (
+                  <button
+                    key={t}
+                    className={`flex-1 py-3.5 text-sm font-medium transition-colors ${
+                      tab === t ? 'text-[#111111] border-b-2 border-[#111111] bg-[#fafafa]' : 'text-[#a1a1aa] hover:text-[#52525b]'
+                    }`}
+                    onClick={() => { setTab(t); setError(''); }}
+                  >
+                    {t === 'login' ? 'Sign In' : 'Create Account'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-8">
               {tab === 'login' ? (
                 <>
-                  <p className="text-sm text-gray-500 mb-6">Sign in to your AssetFlow workspace.</p>
+                  <p className="text-sm text-[#71717a] mb-6">Sign in to your AssetFlow workspace.</p>
 
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -119,7 +131,7 @@ export default function Login() {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="form-label mb-0" htmlFor="password">Password</label>
-                        <button type="button" className="text-xs text-primary-600 hover:underline">
+                        <button type="button" className="text-xs text-[#52525b] hover:text-[#18181b]">
                           Forgot password?
                         </button>
                       </div>
@@ -136,7 +148,7 @@ export default function Login() {
                         <button
                           type="button"
                           onClick={() => setShowPw(s => !s)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a1a1aa] hover:text-[#18181b]"
                         >
                           {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                         </button>
@@ -157,26 +169,27 @@ export default function Login() {
                   </form>
 
                   {/* Demo shortcuts */}
-                  <div className="mt-6 pt-5 border-t border-gray-100">
-                    <p className="text-xs text-gray-400 mb-3 text-center">Quick demo login</p>
+                  <div className="mt-6 pt-5 border-t border-[#f4f4f5]">
+                    <p className="text-xs text-[#a1a1aa] mb-3 text-center">Quick demo login</p>
                     <div className="grid grid-cols-2 gap-2">
                       {DEMO_CREDENTIALS.map(cred => (
                         <button
                           key={cred.email}
                           onClick={() => quickLogin(cred.email)}
-                          className="text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                          disabled={loading}
+                          className="text-left px-3 py-2 rounded-xl border border-[#e4e4e7] hover:border-[#d4d4d8] hover:bg-[#fafafa] transition-colors disabled:opacity-50"
                         >
-                          <p className="text-xs font-semibold text-gray-700">{cred.label}</p>
-                          <p className="text-[10px] text-gray-400">{cred.role}</p>
+                          <p className="text-xs font-medium text-[#18181b]">{cred.label}</p>
+                          <p className="text-[10px] text-[#a1a1aa]">{cred.role}</p>
                         </button>
                       ))}
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-2 text-center">All demo passwords: <code className="bg-gray-100 px-1 rounded">password</code></p>
+                    <p className="text-[10px] text-[#a1a1aa] mt-2 text-center">All demo passwords: <code className="bg-[#f4f4f5] px-1 rounded">password</code></p>
                   </div>
                 </>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-500 mb-2">Create a new AssetFlow account.</p>
+                  <p className="text-sm text-[#71717a] mb-2">Create a new AssetFlow account.</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="form-label">First name</label>
@@ -208,9 +221,10 @@ export default function Login() {
                     Create Account
                     <ArrowRight size={15} />
                   </button>
-                  <p className="text-[10px] text-gray-400 text-center">Account will require admin approval before first login.</p>
+                  <p className="text-[10px] text-[#a1a1aa] text-center">Account will require admin approval before first login.</p>
                 </div>
               )}
+              </div>
             </div>
           </div>
         </div>

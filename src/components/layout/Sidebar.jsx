@@ -21,10 +21,10 @@ const NAV_ITEMS = [
 ];
 
 const ROLE_LABELS = {
-  employee:      'Employee',
-  dept_head:     'Dept Head',
-  asset_manager: 'Asset Manager',
-  admin:         'Admin',
+  EMPLOYEE:        'Employee',
+  DEPARTMENT_HEAD: 'Dept Head',
+  ASSET_MANAGER:   'Asset Manager',
+  ADMIN:           'Admin',
 };
 
 export default function Sidebar() {
@@ -33,46 +33,46 @@ export default function Sidebar() {
   const visible = NAV_ITEMS.filter(item => canAccess(item.routeKey, user?.role));
 
   return (
-    <aside className="w-60 h-screen bg-white border-r border-gray-200 flex flex-col">
+    <aside className="sidebar-graphic w-64 h-screen bg-white border-r border-[#d4d4d8] flex flex-col">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-gray-100">
+      <div className="px-5 py-5 border-b border-[#f4f4f5] relative z-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-[#18181b] flex items-center justify-center">
             <Zap size={16} className="text-white" />
           </div>
           <div>
-            <span className="text-base font-bold text-gray-900">AssetFlow</span>
-            <p className="text-[10px] text-gray-400 -mt-0.5">Enterprise ERM</p>
+            <span className="text-base font-semibold tracking-tight text-[#111111]">AssetFlow</span>
+            <p className="text-[10px] text-[#a1a1aa] -mt-0.5">Enterprise ERM</p>
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto relative z-10">
         {visible.map(item => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
           >
-            <item.icon size={17} />
+            <item.icon size={16} />
             {item.label}
           </NavLink>
         ))}
       </nav>
 
       {/* User footer */}
-      <div className="px-4 py-4 border-t border-gray-100">
+      <div className="px-4 py-4 border-t border-[#f4f4f5] relative z-10">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 font-semibold text-sm">
+          <div className="w-8 h-8 bg-[#f4f4f5] rounded-full flex items-center justify-center text-[#18181b] font-semibold text-sm">
             {user?.name?.[0] ?? 'U'}
           </div>
           <div className="overflow-hidden">
-            <p className="text-xs font-semibold text-gray-800 truncate">{user?.name}</p>
-            <p className="text-[10px] text-gray-400">{ROLE_LABELS[user?.role]} · {user?.department}</p>
+            <p className="text-xs font-medium text-[#18181b] truncate">{user?.name}</p>
+            <p className="text-[10px] text-[#a1a1aa]">{ROLE_LABELS[user?.role] ?? user?.role} · {user?.department}</p>
           </div>
         </div>
-        <button onClick={logout} className="btn-ghost w-full justify-start text-red-500 hover:bg-red-50 text-xs">
+        <button onClick={logout} className="btn-ghost w-full justify-start text-[#b91c1c] hover:bg-[#fef2f2] text-xs">
           <LogOut size={14} />
           Sign out
         </button>
